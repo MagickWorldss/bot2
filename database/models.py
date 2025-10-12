@@ -25,8 +25,9 @@ class User(Base):
     wallet_private_key: Mapped[str] = mapped_column(Text)  # Encrypted
     balance_sol: Mapped[float] = mapped_column(Float, default=0.0)
     
-    # Admin
+    # Admin & Roles
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    role: Mapped[str] = mapped_column(String(50), default='user')  # user, seller, moderator, admin
     
     # Location
     region_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('regions.id'), nullable=True)

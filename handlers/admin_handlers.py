@@ -811,10 +811,13 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     # Add balance
     builder.button(text="💰 Добавить баланс", callback_data=f"admin_add_balance_{user_id}")
     
+    # Change role
+    builder.button(text="👑 Изменить роль", callback_data=f"admin_change_role_{user_id}")
+    
     # Back button
     builder.button(text="◀️ Назад к списку", callback_data="admin_users_list")
     
-    builder.adjust(2, 2, 1, 1)
+    builder.adjust(2, 2, 1, 1, 1)
     
     # User info
     status = "🚫 Заблокирован" if target_user.is_blocked else "✅ Активен"
@@ -822,12 +825,17 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     if target_user.region and target_user.city:
         location = f"{target_user.region.name}, {target_user.city.name}"
     
+    # Get user role
+    from services.role_service import role_service
+    role_name = role_service.get_role_name(target_user.role, 'ru')
+    
     user_info = (
         f"👤 **Пользователь**\n\n"
         f"ID: `{target_user.id}`\n"
         f"Имя: {target_user.first_name or 'N/A'}\n"
         f"Username: @{target_user.username or 'N/A'}\n"
-        f"Статус: {status}\n\n"
+        f"Статус: {status}\n"
+        f"👑 Роль: **{role_name}**\n\n"
         f"💰 Баланс: {format_sol_amount(target_user.balance_sol)}\n"
         f"📍 Локация: {location}\n"
         f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
@@ -1133,4 +1141,51 @@ async def admin_users_list_callback(callback: CallbackQuery, session: AsyncSessi
         parse_mode="Markdown"
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_change_role_"))
+async def admin_change_role(callback: CallbackQuery, session: AsyncSession):
+    """Show role selection menu."""
+    user_id = int(callback.data.split("_")[3])
+    
+    from services.role_service import role_service
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    builder = InlineKeyboardBuilder()
+    
+    roles = ['user', 'seller', 'moderator', 'admin']
+    for role in roles:
+        role_name = role_service.get_role_name(role, 'ru')
+        builder.button(text=f"👑 {role_name}", callback_data=f"set_role_{user_id}_{role}")
+    
+    builder.button(text="◀️ Назад", callback_data=f"admin_user_{user_id}")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        "👑 **Выберите новую роль:**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("set_role_"))
+async def set_user_role(callback: CallbackQuery, session: AsyncSession):
+    """Set user role."""
+    parts = callback.data.split("_")
+    user_id = int(parts[2])
+    new_role = parts[3]
+    
+    from services.role_service import role_service
+    
+    success = await role_service.set_user_role(session, user_id, new_role)
+    
+    if success:
+        role_name = role_service.get_role_name(new_role, 'ru')
+        await callback.answer(f"✅ Роль изменена на: {role_name}", show_alert=True)
+        
+        # Return to user info
+        await admin_user_actions(callback, session)
+    else:
+        await callback.answer("❌ Ошибка при изменении роли", show_alert=True)
 

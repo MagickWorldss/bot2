@@ -15,27 +15,56 @@ def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
     from services.language_service import language_service
     
     builder = ReplyKeyboardBuilder()
+    # Row 1
     builder.button(text=language_service.get_text(language, 'catalog'))
+    builder.button(text="🛒 Корзина")
+    # Row 2
     builder.button(text=language_service.get_text(language, 'balance'))
     builder.button(text=language_service.get_text(language, 'select_region'))
+    # Row 3
+    builder.button(text="🎁 Реферальная программа")
+    builder.button(text="🏆 Достижения")
+    # Row 4
+    builder.button(text="🎁 Ежедневный бонус")
+    builder.button(text="🎯 Квесты")
+    # Row 5
+    builder.button(text="🧩 Квиз")
+    builder.button(text="🎫 Поддержка")
+    # Row 6
     builder.button(text=language_service.get_text(language, 'price_list'))
     builder.button(text=language_service.get_text(language, 'purchase_history'))
+    # Row 7
     builder.button(text=language_service.get_text(language, 'language'))
     builder.button(text=language_service.get_text(language, 'help'))
-    builder.adjust(2, 2, 2, 1)
+    
+    builder.adjust(2, 2, 2, 2, 2, 2, 2)
     return builder.as_markup(resize_keyboard=True)
 
 
 def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     """Admin menu keyboard."""
     builder = ReplyKeyboardBuilder()
+    # Row 1
     builder.button(text="➕ Добавить товар")
     builder.button(text="📊 Статистика")
+    # Row 2
     builder.button(text="🗂 Управление регионами")
     builder.button(text="👥 Управление пользователями")
+    # Row 3
+    builder.button(text="🎫 Промокоды")
+    builder.button(text="🎯 Квесты")
+    # Row 4
+    builder.button(text="🧩 Квизы")
+    builder.button(text="📢 Рассылка")
+    # Row 5
+    builder.button(text="🎄 События")
+    builder.button(text="🎫 Тикеты поддержки")
+    # Row 6
     builder.button(text="✏️ Редактировать прайс-лист")
+    # Row 7
     builder.button(text="🔙 Главное меню")
-    builder.adjust(2, 2, 1, 1)
+    
+    builder.adjust(2, 2, 2, 2, 2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
 
 

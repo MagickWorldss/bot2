@@ -1,6 +1,20 @@
 """Handlers package."""
 from aiogram import Router
-from handlers import user_handlers, admin_handlers, catalog_handlers, wallet_handlers, language_handlers
+from handlers import (
+    user_handlers,
+    admin_handlers,
+    catalog_handlers,
+    wallet_handlers,
+    language_handlers,
+    referral_handlers,
+    cart_handlers,
+    achievement_handlers,
+    daily_bonus_handlers,
+    quest_handlers,
+    quiz_handlers,
+    ticket_handlers,
+    admin_promocode_handlers,
+)
 
 
 def setup_routers() -> Router:
@@ -13,6 +27,14 @@ def setup_routers() -> Router:
     router.include_router(catalog_handlers.router)
     router.include_router(wallet_handlers.router)
     router.include_router(language_handlers.router)
+    router.include_router(referral_handlers.router)
+    router.include_router(cart_handlers.router)
+    router.include_router(achievement_handlers.router)
+    router.include_router(daily_bonus_handlers.router)
+    router.include_router(quest_handlers.router)
+    router.include_router(quiz_handlers.router)
+    router.include_router(ticket_handlers.router)
+    router.include_router(admin_promocode_handlers.router)
     
     return router
 
