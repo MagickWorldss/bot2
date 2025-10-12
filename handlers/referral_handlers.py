@@ -23,8 +23,8 @@ async def show_referral_info(message: Message, user: User, session: AsyncSession
     # Get stats
     stats = await referral_service.get_referral_stats(session, user.id)
     
-    # Convert earnings to EUR
-    earnings_eur = await price_service.sol_to_eur(stats['total_earnings_sol'])
+    # ВАЖНО: total_earnings_sol уже в EUR! НЕ КОНВЕРТИРУЕМ!
+    earnings_eur = stats['total_earnings_sol']
     
     text = f"""
 🎁 **Реферальная программа**
@@ -35,8 +35,7 @@ async def show_referral_info(message: Message, user: User, session: AsyncSession
 
 📊 **Твоя статистика:**
 ├ Приглашено друзей: **{stats['total_referrals']}**
-├ Заработано: **{price_service.format_sol(stats['total_earnings_sol'])}**
-└ В евро: **{price_service.format_eur(earnings_eur)}**
+└ Заработано: **€{earnings_eur:.2f}**
 
 ━━━━━━━━━━━━━━━━━━━━
 

@@ -59,22 +59,22 @@ async def view_cart(message: Message, user: User, session: AsyncSession, edit: b
             await message.answer(text, parse_mode="Markdown")
         return
     
-    # Calculate total
+    # Calculate total (в EUR, не SOL!)
     total_sol = await cart_service.get_cart_total(session, user.id)
-    total_eur = await price_service.sol_to_eur(total_sol)
+    # ВАЖНО: total_sol уже в EUR! НЕ КОНВЕРТИРУЕМ!
+    total_eur = total_sol
     
     # Build message
     text = "🛒 **Твоя корзина**\n\n"
     
     for idx, item in enumerate(items, 1):
-        item_eur = await price_service.sol_to_eur(item.price_sol)
+        # ВАЖНО: price_sol уже в EUR!
         text += f"{idx}. {item.description or 'Товар'}\n"
-        text += f"   💰 {price_service.format_sol(item.price_sol)} ({price_service.format_eur(item_eur)})\n\n"
+        text += f"   💶 €{item.price_sol:.2f}\n\n"
     
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
-    text += f"💵 **Итого:** {price_service.format_sol(total_sol)}\n"
-    text += f"💶 **В евро:** {price_service.format_eur(total_eur)}\n\n"
-    text += f"💰 **Твой баланс:** {price_service.format_sol(user.balance_sol)}\n"
+    text += f"💶 **Итого:** €{total_eur:.2f}\n\n"
+    text += f"💰 **Твой баланс:** €{user.balance_sol:.2f}\n"
     
     # Build keyboard
     builder = InlineKeyboardBuilder()
@@ -90,8 +90,8 @@ async def view_cart(message: Message, user: User, session: AsyncSession, edit: b
         builder.button(text="💳 Купить всё", callback_data="buy_cart")
     else:
         deficit = total_sol - user.balance_sol
-        deficit_eur = await price_service.sol_to_eur(deficit)
-        builder.button(text=f"💳 Не хватает {price_service.format_eur(deficit_eur)}", callback_data="need_balance")
+        # ВАЖНО: deficit уже в EUR!
+        builder.button(text=f"💳 Не хватает €{deficit:.2f}", callback_data="need_balance")
     
     builder.button(text="🗑 Очистить корзину", callback_data="clear_cart")
     builder.button(text="🔙 Назад", callback_data="back_to_catalog")
@@ -185,13 +185,12 @@ async def buy_cart_callback(callback: CallbackQuery, user: User, session: AsyncS
     # Clear cart
     await cart_service.clear_cart(session, user.id)
     
-    # Success message
-    total_eur = await price_service.sol_to_eur(total_sol)
+    # Success message (total_sol уже в EUR!)
     text = f"""
 ✅ **Покупка успешна!**
 
 📦 Куплено товаров: **{purchased_count}**
-💰 Потрачено: **{price_service.format_sol(total_sol)}** ({price_service.format_eur(total_eur)})
+💶 Потрачено: **€{total_eur:.2f}**
     """
     
     if new_achievements:

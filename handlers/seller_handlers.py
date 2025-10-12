@@ -31,18 +31,26 @@ async def my_products(callback: CallbackQuery, user: User, session: AsyncSession
         images = await ImageService.get_images_by_uploader(session, user.id)
         title = "📦 **Мои товары:**"
     
-    if not images:
-        await callback.message.edit_text(
-            "📭 У вас пока нет добавленных товаров.\n\n"
-            "Используйте: /god → ➕ Добавить товар"
-        )
-        await callback.answer()
-        return
-    
     # Build keyboard with products
     builder = InlineKeyboardBuilder()
     
+    # Add "Add Product" button for sellers
+    builder.button(text="➕ Добавить товар", callback_data="seller_add_product_start")
+    
     text = f"{title}\n\n"
+    
+    if not images:
+        text += "📭 У вас пока нет товаров.\n\n"
+        text += "Нажмите '➕ Добавить товар' чтобы начать!"
+        
+        builder.button(text="🔙 Назад к магазину", callback_data="back_to_shop_from_products")
+        builder.adjust(1)
+        
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        await callback.answer()
+        return
+    
+    text += f"Всего товаров: **{len(images)}**\n\n"
     
     for img in images[:20]:  # Show first 20
         await session.refresh(img, ['region', 'city'])
@@ -191,6 +199,39 @@ async def delete_product(callback: CallbackQuery, user: User, session: AsyncSess
 async def back_to_my_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to products list."""
     await my_products(callback, user, session)
+
+
+@router.callback_query(F.data == "seller_add_product_start")
+async def seller_add_product_start(callback: CallbackQuery, user: User, session: AsyncSession, state: FSMContext):
+    """Start adding product for seller."""
+    # Import states from admin_handlers
+    from handlers.admin_handlers import AddImageStates
+    from services.location_service import LocationService
+    from utils.keyboards import cancel_keyboard
+    
+    # Check role
+    if user.role not in ['seller', 'moderator', 'admin']:
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    # Get regions
+    regions = await LocationService.get_all_regions(session)
+    
+    if not regions:
+        await callback.answer("❌ Нет регионов в системе", show_alert=True)
+        return
+    
+    regions_text = "📍 **Выберите регион для товара:**\n\n"
+    for region in regions:
+        regions_text += f"/{region.id} - {region.name}\n"
+    
+    await state.set_state(AddImageStates.waiting_for_region)
+    await callback.message.answer(
+        regions_text,
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "back_to_shop_from_products")
