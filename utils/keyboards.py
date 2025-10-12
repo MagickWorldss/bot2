@@ -30,6 +30,7 @@ def shop_menu_keyboard() -> InlineKeyboardMarkup:
     
     builder.button(text="🛍 Каталог товаров", callback_data="catalog_menu")
     builder.button(text="🎁 Стафф (за баллы)", callback_data="staff_menu")
+    builder.button(text="📍 Изменить регион", callback_data="change_region_menu")
     
     builder.adjust(1)
     return builder.as_markup()

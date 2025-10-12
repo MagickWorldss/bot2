@@ -116,8 +116,8 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
 📍 Регион: {image.region.name}
 🏙 Город: {image.city.name}
 
-💰 Цена: {format_sol_amount(image.price_sol)}
-💵 Ваш баланс: {format_sol_amount(user.balance_sol)}
+💶 Цена: €{image.price_sol:.2f}
+💰 Ваш баланс: €{user.balance_sol:.2f}
 """
     
     if image.description:
@@ -206,8 +206,8 @@ async def buy_image(callback: CallbackQuery, user: User, session: AsyncSession):
     if user.balance_sol < image.price_sol:
         await callback.answer(
             f"❌ Недостаточно средств.\n"
-            f"Требуется: {format_sol_amount(image.price_sol)}\n"
-            f"Ваш баланс: {format_sol_amount(user.balance_sol)}",
+            f"Требуется: €{image.price_sol:.2f}\n"
+            f"Ваш баланс: €{user.balance_sol:.2f}",
             show_alert=True
         )
         return
@@ -217,7 +217,7 @@ async def buy_image(callback: CallbackQuery, user: User, session: AsyncSession):
     await callback.message.edit_caption(
         caption=f"⚠️ **Подтверждение покупки**\n\n"
         f"Товар: #{image.id}\n"
-        f"Цена: {format_sol_amount(image.price_sol)}\n\n"
+        f"💶 Цена: €{image.price_sol:.2f}\n\n"
         f"Вы уверены, что хотите купить этот товар?",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -281,8 +281,8 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
             photo=image.file_id,
             caption=f"✅ **Покупка успешна!**\n\n"
             f"Товар: #{image.id}\n"
-            f"Оплачено: {format_sol_amount(image.price_sol)}\n"
-            f"Остаток баланса: {format_sol_amount(user.balance_sol)}\n\n"
+            f"💶 Оплачено: €{image.price_sol:.2f}\n"
+            f"💰 Остаток баланса: €{user.balance_sol:.2f}\n\n"
             f"Спасибо за покупку! 🎉",
             parse_mode="Markdown"
         )

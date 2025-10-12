@@ -173,8 +173,8 @@ async def add_product_image(message: Message, state: FSMContext):
     await state.set_state(AddImageStates.waiting_for_price)
     
     await message.answer(
-        "💰 **Укажите цену в SOL:**\n\n"
-        "Например: 0.05"
+        "💰 **Укажите цену в EUR (€):**\n\n"
+        "Например: 5.00 или 10"
     )
 
 
@@ -189,13 +189,14 @@ async def add_product_price(message: Message, state: FSMContext):
         )
         return
     
-    from utils.helpers import validate_sol_amount
-    
-    price = validate_sol_amount(message.text)
-    if not price:
+    try:
+        price = float(message.text.strip().replace(',', '.'))
+        if price <= 0:
+            raise ValueError
+    except ValueError:
         await message.answer(
             "❌ Неверная цена. Введите число больше 0.\n"
-            "Например: 0.05"
+            "Например: 5.00 или 10"
         )
         return
     
@@ -228,10 +229,21 @@ async def add_product_description(
     
     # Get data from state
     data = await state.get_data()
-    region_id = data['region_id']
-    city_id = data['city_id']
-    file_id = data['file_id']
-    price = data['price']
+    region_id = data.get('region_id')
+    city_id = data.get('city_id')
+    file_id = data.get('file_id')
+    price = data.get('price')
+    
+    # Debug: check if all data is present
+    if not region_id or not city_id or not file_id or not price:
+        await message.answer(
+            f"❌ Ошибка: отсутствуют данные.\n"
+            f"region_id: {region_id}, city_id: {city_id}\n"
+            f"Попробуйте добавить товар заново.",
+            reply_markup=admin_menu_keyboard()
+        )
+        await state.clear()
+        return
     
     # Download and save image file
     file = await message.bot.get_file(file_id)
@@ -262,7 +274,7 @@ async def add_product_description(
     log = AdminLog(
         admin_id=user.id,
         action="add_product",
-        details=f"Added product #{image.id}, price: {price} SOL"
+        details=f"Added product #{image.id}, price: €{price}"
     )
     session.add(log)
     await session.commit()
@@ -277,8 +289,8 @@ async def add_product_description(
         f"ID: #{image.id}\n"
         f"Регион: {image.region.name}\n"
         f"Город: {image.city.name}\n"
-        f"Цена: {format_sol_amount(image.price_sol)}\n"
-        f"Описание: {image.description or 'Нет'}",
+        f"💶 Цена: €{image.price_sol:.2f}\n"
+        f"📝 Описание: {image.description or 'Нет'}",
         reply_markup=admin_menu_keyboard(),
         parse_mode="Markdown"
     )

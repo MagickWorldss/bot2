@@ -46,6 +46,30 @@ async def show_shop_menu(message: Message, user: User, session: AsyncSession):
     await message.answer(text, reply_markup=shop_menu_keyboard(), parse_mode="Markdown")
 
 
+@router.callback_query(F.data == "change_region_menu")
+async def change_region_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Change region from shop menu."""
+    from services.location_service import LocationService
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    regions = await LocationService.get_all_regions(session)
+    
+    builder = InlineKeyboardBuilder()
+    for region in regions:
+        builder.button(
+            text=f"{region.name}",
+            callback_data=f"select_region_{region.id}"
+        )
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        "📍 **Выберите регион:**",
+        parse_mode="Markdown",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+
 @router.callback_query(F.data == "catalog_menu")
 async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show catalog from menu."""
