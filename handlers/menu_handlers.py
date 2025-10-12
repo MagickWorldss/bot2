@@ -58,7 +58,7 @@ async def change_region_from_menu(callback: CallbackQuery, user: User, session: 
     for region in regions:
         builder.button(
             text=f"{region.name}",
-            callback_data=f"select_region_{region.id}"
+            callback_data=f"region_{region.id}"  # Исправлено: используем существующий handler
         )
     builder.adjust(1)
     
