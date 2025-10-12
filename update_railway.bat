@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ СИСТЕМА БАЛАНСА: убрана конвертация EUR/SOL + кнопка в магазине"
+git commit -m "✅ ФИНАЛ: баланс EUR + кнопка в Магазине + wallet_balance_sol"
 
 echo.
 echo 3. Загрузка на GitHub...

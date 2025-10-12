@@ -1,5 +1,6 @@
 """Admin handlers for bot management."""
 import os
+import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -23,6 +24,7 @@ from config import settings
 
 
 router = Router(name='admin_handlers')
+logger = logging.getLogger(__name__)
 
 
 class AddImageStates(StatesGroup):
@@ -1047,7 +1049,16 @@ async def manage_users(message: Message, user: User, session: AsyncSession):
 @router.callback_query(F.data.startswith("admin_user_"))
 async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     """Show user actions."""
-    user_id = int(callback.data.split("_")[2])
+    # Parse user_id correctly for different callback patterns
+    parts = callback.data.split("_")
+    if len(parts) == 3:
+        # admin_user_12345
+        user_id = int(parts[2])
+    else:
+        # Should not happen, but handle gracefully
+        logger.error(f"Unexpected callback_data format: {callback.data}")
+        await callback.answer("❌ Ошибка парсинга", show_alert=True)
+        return
     target_user = await UserService.get_user_with_location(session, user_id)
     
     if not target_user:
@@ -1149,11 +1160,18 @@ async def admin_block_user(callback: CallbackQuery, session: AsyncSession, user:
         
         await callback.answer("✅ Пользователь заблокирован!", show_alert=True)
         
-        # Refresh user info
-        target_user = await UserService.get_user_with_location(session, user_id)
+        # Create new callback with correct data
+        from aiogram.types import CallbackQuery as CQ
+        new_callback = CQ(
+            id=callback.id,
+            from_user=callback.from_user,
+            message=callback.message,
+            chat_instance=callback.chat_instance,
+            data=f"admin_user_{user_id}"
+        )
         
-        # Just call admin_user_actions to refresh
-        await admin_user_actions(callback, session)
+        # Refresh user info
+        await admin_user_actions(new_callback, session)
         return
         
         status = "🚫 Заблокирован"
@@ -1201,8 +1219,18 @@ async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, use
         
         await callback.answer("✅ Пользователь разблокирован!", show_alert=True)
         
-        # Just call admin_user_actions to refresh
-        await admin_user_actions(callback, session)
+        # Create new callback with correct data
+        from aiogram.types import CallbackQuery as CQ
+        new_callback = CQ(
+            id=callback.id,
+            from_user=callback.from_user,
+            message=callback.message,
+            chat_instance=callback.chat_instance,
+            data=f"admin_user_{user_id}"
+        )
+        
+        # Refresh user info
+        await admin_user_actions(new_callback, session)
         return
         
         status = "✅ Активен"
@@ -1442,8 +1470,18 @@ async def admin_reset_balance(callback: CallbackQuery, user: User, session: Asyn
     
     await callback.answer(f"✅ Баланс обнулен! (было €{old_balance:.2f})", show_alert=True)
     
+    # Create new callback with correct data for admin_user_actions
+    from aiogram.types import CallbackQuery as CQ
+    new_callback = CQ(
+        id=callback.id,
+        from_user=callback.from_user,
+        message=callback.message,
+        chat_instance=callback.chat_instance,
+        data=f"admin_user_{user_id}"  # Правильный формат!
+    )
+    
     # Refresh user info
-    await admin_user_actions(callback, session)
+    await admin_user_actions(new_callback, session)
 
 
 @router.callback_query(F.data.startswith("admin_change_role_"))
@@ -1487,8 +1525,18 @@ async def set_user_role(callback: CallbackQuery, session: AsyncSession):
         role_name = role_service.get_role_name(new_role, 'ru')
         await callback.answer(f"✅ Роль изменена на: {role_name}", show_alert=True)
         
+        # Create new callback with correct data
+        from aiogram.types import CallbackQuery as CQ
+        new_callback = CQ(
+            id=callback.id,
+            from_user=callback.from_user,
+            message=callback.message,
+            chat_instance=callback.chat_instance,
+            data=f"admin_user_{user_id}"
+        )
+        
         # Return to user info
-        await admin_user_actions(callback, session)
+        await admin_user_actions(new_callback, session)
     else:
         await callback.answer("❌ Ошибка при изменении роли", show_alert=True)
 

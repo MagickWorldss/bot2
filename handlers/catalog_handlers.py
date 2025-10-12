@@ -50,7 +50,7 @@ async def show_catalog(message: Message, user: User, session: AsyncSession, stat
     await message.answer(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"Ваш баланс: {format_sol_amount(user.balance_sol)}\n\n"
+        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -85,7 +85,7 @@ async def catalog_page(
     await callback.message.edit_text(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"Ваш баланс: {format_sol_amount(user.balance_sol)}\n\n"
+        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -180,7 +180,7 @@ async def back_to_catalog(
     await callback.message.edit_text(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"Ваш баланс: {format_sol_amount(user.balance_sol)}\n\n"
+        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"

@@ -43,7 +43,7 @@ async def show_shop_menu(message: Message, user: User, session: AsyncSession):
 ✨ Ваши баллы: **{user.achievement_points}**
     """
     
-    await message.answer(text, reply_markup=shop_menu_keyboard(), parse_mode="Markdown")
+    await message.answer(text, reply_markup=shop_menu_keyboard(user_role=user.role), parse_mode="Markdown")
 
 
 @router.callback_query(F.data == "change_region_menu")
