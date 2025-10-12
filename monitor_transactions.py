@@ -28,11 +28,13 @@ async def check_user_deposits(session, user: User) -> float:
         from services.deposit_service import deposit_service
         from services.price_service import price_service
         
-        # Get actual balance from blockchain
+        # Get actual balance from blockchain (in SOL)
         actual_balance = await wallet_service.get_balance(user.wallet_address)
         
-        # Calculate difference in SOL
-        sol_difference = actual_balance - user.balance_sol
+        # Calculate difference in SOL (compare with wallet_balance_sol, NOT balance_sol!)
+        # balance_sol = EUR balance
+        # wallet_balance_sol = last known SOL balance on blockchain
+        sol_difference = actual_balance - user.wallet_balance_sol
         
         if sol_difference > 0.0001:  # Ignore dust (< 0.0001 SOL)
             logger.info(
@@ -104,14 +106,18 @@ async def process_deposits():
                     if eur_amount > 0:
                         # Get actual SOL amount for logging
                         actual_balance = await wallet_service.get_balance(user.wallet_address)
-                        sol_received = actual_balance - user.balance_sol
+                        sol_received = actual_balance - user.wallet_balance_sol
                         
-                        # Update user balance in SOL (wallet balance)
+                        # Update user balance in EUR!
                         await UserService.update_balance(
                             session,
                             user.id,
-                            sol_received
+                            eur_amount  # Add EUR, not SOL!
                         )
+                        
+                        # Update wallet SOL balance tracker
+                        user.wallet_balance_sol = actual_balance
+                        await session.commit()
                         
                         # Create transaction record
                         await TransactionService.create_transaction(

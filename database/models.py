@@ -23,7 +23,8 @@ class User(Base):
     # Wallet
     wallet_address: Mapped[str] = mapped_column(String(255), unique=True)
     wallet_private_key: Mapped[str] = mapped_column(Text)  # Encrypted
-    balance_sol: Mapped[float] = mapped_column(Float, default=0.0)
+    balance_sol: Mapped[float] = mapped_column(Float, default=0.0)  # Balance in EUR! (bad naming, but keeping for compatibility)
+    wallet_balance_sol: Mapped[float] = mapped_column(Float, default=0.0)  # Real SOL balance on blockchain
     
     # Admin & Roles
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)

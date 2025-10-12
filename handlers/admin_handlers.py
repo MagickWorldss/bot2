@@ -1072,13 +1072,16 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     # Add balance
     builder.button(text="💰 Добавить баланс", callback_data=f"admin_add_balance_{user_id}")
     
+    # Reset balance
+    builder.button(text="🔄 Обнулить баланс", callback_data=f"admin_reset_balance_{user_id}")
+    
     # Change role
     builder.button(text="👑 Изменить роль", callback_data=f"admin_change_role_{user_id}")
     
     # Back button
     builder.button(text="◀️ Назад к списку", callback_data="admin_users_list")
     
-    builder.adjust(2, 2, 1, 1, 1)
+    builder.adjust(2, 2, 2, 1, 1)
     
     # User info
     status = "🚫 Заблокирован" if target_user.is_blocked else "✅ Активен"
@@ -1408,6 +1411,39 @@ async def admin_users_list_callback(callback: CallbackQuery, session: AsyncSessi
         parse_mode="Markdown"
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_reset_balance_"))
+async def admin_reset_balance(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Reset user balance to zero."""
+    user_id = int(callback.data.split("_")[3])
+    
+    # Get user
+    target_user = await UserService.get_user(session, user_id)
+    
+    if not target_user:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
+    
+    old_balance = target_user.balance_sol
+    
+    # Reset balance
+    target_user.balance_sol = 0.0
+    await session.commit()
+    
+    # Log action
+    log = AdminLog(
+        admin_id=user.id,
+        action="reset_balance",
+        details=f"Reset balance for user {user_id} (was €{old_balance:.2f})"
+    )
+    session.add(log)
+    await session.commit()
+    
+    await callback.answer(f"✅ Баланс обнулен! (было €{old_balance:.2f})", show_alert=True)
+    
+    # Refresh user info
+    await admin_user_actions(callback, session)
 
 
 @router.callback_query(F.data.startswith("admin_change_role_"))
