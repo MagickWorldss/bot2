@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ Роли продавцов + управление пользователями работает"
+git commit -m "✅ ИСПРАВЛЕНО: AttributeError region + роли продавцов"
 
 echo.
 echo 3. Загрузка на GitHub...

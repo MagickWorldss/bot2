@@ -1082,8 +1082,14 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     # User info
     status = "🚫 Заблокирован" if target_user.is_blocked else "✅ Активен"
     location = "Не указана"
-    if target_user.region and target_user.city:
-        location = f"{target_user.region.name}, {target_user.city.name}"
+    
+    # Load region and city if exist
+    if target_user.region_id and target_user.city_id:
+        from services.location_service import LocationService
+        region = await LocationService.get_region_by_id(session, target_user.region_id)
+        city = await LocationService.get_city_by_id(session, target_user.city_id)
+        if region and city:
+            location = f"{region.name}, {city.name}"
     
     # Get user role
     from services.role_service import role_service
