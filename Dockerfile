@@ -30,12 +30,8 @@ RUN mkdir -p images data logs
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Healthcheck (опционально для Railway)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
-
-# Порт (Railway автоматически определяет, но можно указать)
-EXPOSE 8080
+# Telegram bot не нуждается в healthcheck
+# Railway автоматически мониторит процесс
 
 # Команда по умолчанию (использует start.py для автоинициализации)
 CMD ["python", "start.py"]
