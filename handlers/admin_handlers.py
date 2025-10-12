@@ -1095,13 +1095,17 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     from services.role_service import role_service
     role_name = role_service.get_role_name(target_user.role, 'ru')
     
+    # Escape special characters for Markdown
+    first_name = (target_user.first_name or 'N/A').replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
+    username_display = f"@{target_user.username.replace('_', '\\_')}" if target_user.username else 'N/A'
+    
     user_info = (
-        f"👤 **Пользователь**\n\n"
+        f"👤 *Пользователь*\n\n"
         f"ID: `{target_user.id}`\n"
-        f"Имя: {target_user.first_name or 'N/A'}\n"
-        f"Username: @{target_user.username or 'N/A'}\n"
+        f"Имя: {first_name}\n"
+        f"Username: {username_display}\n"
         f"Статус: {status}\n"
-        f"👑 Роль: **{role_name}**\n\n"
+        f"👑 Роль: *{role_name}*\n\n"
         f"💶 Баланс: €{target_user.balance_sol:.2f}\n"
         f"📍 Локация: {location}\n"
         f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
@@ -1238,7 +1242,7 @@ async def admin_view_purchases(callback: CallbackQuery, session: AsyncSession):
         
         history_text += (
             f"🖼 Товар #{image.id}\n"
-            f"💰 Цена: {format_sol_amount(purchase.price_paid_sol)}\n"
+            f"💶 Цена: €{purchase.price_sol:.2f}\n"
             f"📅 Дата: {purchase.created_at.strftime('%d.%m.%Y %H:%M')}\n"
             f"📍 {image.region.name}, {image.city.name}\n\n"
         )

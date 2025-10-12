@@ -85,7 +85,7 @@ class ImageService:
         purchase = Purchase(
             user_id=user_id,
             image_id=image_id,
-            price_paid_sol=price_paid
+            price_sol=price_paid
         )
         session.add(purchase)
         
@@ -168,7 +168,7 @@ class ImageService:
         
         # Total revenue
         result = await session.execute(
-            select(func.sum(Purchase.price_paid_sol))
+            select(func.sum(Purchase.price_sol))
         )
         total_revenue = result.scalar() or 0.0
         
