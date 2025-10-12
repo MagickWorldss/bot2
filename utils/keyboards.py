@@ -20,24 +20,26 @@ def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
     builder.button(text="🛒 Корзина")
     # Row 2
     builder.button(text=language_service.get_text(language, 'balance'))
-    builder.button(text=language_service.get_text(language, 'select_region'))
+    builder.button(text="🎁 Стафф")
     # Row 3
+    builder.button(text=language_service.get_text(language, 'select_region'))
     builder.button(text="🎁 Реферальная программа")
-    builder.button(text="🏆 Достижения")
     # Row 4
+    builder.button(text="🏆 Достижения")
     builder.button(text="🎁 Ежедневный бонус")
-    builder.button(text="🎯 Квесты")
     # Row 5
+    builder.button(text="🎯 Квесты")
     builder.button(text="🧩 Квиз")
-    builder.button(text="🎫 Поддержка")
     # Row 6
-    builder.button(text=language_service.get_text(language, 'price_list'))
+    builder.button(text="🎫 Поддержка")
     builder.button(text=language_service.get_text(language, 'purchase_history'))
     # Row 7
+    builder.button(text=language_service.get_text(language, 'price_list'))
     builder.button(text=language_service.get_text(language, 'language'))
+    # Row 8
     builder.button(text=language_service.get_text(language, 'help'))
     
-    builder.adjust(2, 2, 2, 2, 2, 2, 2)
+    builder.adjust(2, 2, 2, 2, 2, 2, 2, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -52,19 +54,20 @@ def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     builder.button(text="👥 Управление пользователями")
     # Row 3
     builder.button(text="🎫 Промокоды")
-    builder.button(text="🎯 Квесты")
+    builder.button(text="🎁 Стафф товары")
     # Row 4
+    builder.button(text="🎯 Квесты")
     builder.button(text="🧩 Квизы")
-    builder.button(text="📢 Рассылка")
     # Row 5
+    builder.button(text="📢 Рассылка")
     builder.button(text="🎄 События")
-    builder.button(text="🎫 Тикеты поддержки")
     # Row 6
+    builder.button(text="🎫 Тикеты поддержки")
     builder.button(text="✏️ Редактировать прайс-лист")
     # Row 7
     builder.button(text="🔙 Главное меню")
     
-    builder.adjust(2, 2, 2, 2, 2, 1, 1)
+    builder.adjust(2, 2, 2, 2, 2, 2, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -203,10 +206,6 @@ def wallet_keyboard() -> InlineKeyboardMarkup:
     builder.button(
         text="💵 Пополнить баланс",
         callback_data="deposit"
-    )
-    builder.button(
-        text="💸 Вывести средства",
-        callback_data="withdraw"
     )
     builder.button(
         text="📋 История транзакций",

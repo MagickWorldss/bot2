@@ -98,9 +98,9 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
 💰 **Ваш баланс**
 
 💶 Баланс: {price_service.format_eur(balance_eur)}
-💎 В SOL: {format_sol_amount(user.balance_sol)}
+✨ Баллы: **{user.achievement_points}** баллов
 
-📊 Текущий курс: 1 SOL = €{rate:.2f}
+━━━━━━━━━━━━━━━━━━━━
 
 {rating_info['emoji']} **Ваш рейтинг: {rating_info['rating']:+.1f}**
 {rating_info['bar']} {rating_info['level']}
@@ -109,6 +109,10 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
 ├ Покупок: {rating_info['total_purchases']}
 ├ Потрачено: {price_service.format_eur(await price_service.sol_to_eur(rating_info['total_spent_sol']))}
 └ Возвратов: {rating_info['refunds_count']}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💡 Баллы можно потратить в разделе "🎁 Стафф"
     """
     
     if active_deposit:

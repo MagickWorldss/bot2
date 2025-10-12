@@ -14,6 +14,8 @@ from handlers import (
     quiz_handlers,
     ticket_handlers,
     admin_promocode_handlers,
+    staff_handlers,
+    admin_staff_handlers,
 )
 
 
@@ -35,6 +37,8 @@ def setup_routers() -> Router:
     router.include_router(quiz_handlers.router)
     router.include_router(ticket_handlers.router)
     router.include_router(admin_promocode_handlers.router)
+    router.include_router(staff_handlers.router)
+    router.include_router(admin_staff_handlers.router)
     
     return router
 

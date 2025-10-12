@@ -389,3 +389,34 @@ class AuctionBid(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'))
     bid_amount_sol: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class StaffItem(Base):
+    """Staff shop items (purchasable with points)."""
+    __tablename__ = 'staff_items'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    price_points: Mapped[int] = mapped_column(Integer)  # Price in points
+    
+    file_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Image/file
+    item_type: Mapped[str] = mapped_column(String(50), default='digital')  # digital, promocode, bonus
+    item_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Content/promo code
+    
+    stock_count: Mapped[int] = mapped_column(Integer, default=1)
+    sold_count: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class StaffPurchase(Base):
+    """Staff item purchases."""
+    __tablename__ = 'staff_purchases'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'))
+    staff_item_id: Mapped[int] = mapped_column(Integer, ForeignKey('staff_items.id'))
+    points_spent: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

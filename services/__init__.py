@@ -22,6 +22,7 @@ from services.seasonal_service import seasonal_service
 from services.quiz_service import quiz_service
 from services.role_service import role_service
 from services.district_service import district_service
+from services.staff_service import staff_service
 
 __all__ = [
     'wallet_service',
@@ -47,5 +48,6 @@ __all__ = [
     'quiz_service',
     'role_service',
     'district_service',
+    'staff_service',
 ]
 
