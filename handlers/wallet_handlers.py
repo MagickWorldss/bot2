@@ -1,4 +1,5 @@
 """Wallet handlers for balance operations."""
+from datetime import datetime
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -19,27 +20,130 @@ class WithdrawStates(StatesGroup):
     waiting_for_amount = State()
 
 
+class DepositStates(StatesGroup):
+    """States for deposit process."""
+    waiting_for_eur_amount = State()
+
+
 @router.callback_query(F.data == "deposit")
-async def deposit_info(callback: CallbackQuery, user: User):
-    """Show deposit information."""
+async def deposit_init(callback: CallbackQuery, user: User, session: AsyncSession, state: FSMContext):
+    """Initialize deposit with EUR amount."""
+    from services.price_service import price_service
+    from services.deposit_service import deposit_service
+    
+    # Check for active deposit
+    active_deposit = await deposit_service.get_active_deposit(session, user.id)
+    
+    if active_deposit:
+        # Show existing deposit
+        remaining = active_deposit.expires_at - datetime.utcnow()
+        minutes = int(remaining.total_seconds() / 60)
+        seconds = int(remaining.total_seconds() % 60)
+        
+        deposit_text = f"""
+⏳ **У вас уже есть активная заявка**
+
+Сумма: {price_service.format_eur(active_deposit.eur_amount)}
+Требуется: {price_service.format_sol(active_deposit.sol_amount)}
+Курс: 1 SOL = €{active_deposit.reserved_rate:.2f}
+
+Осталось времени: {minutes} мин {seconds} сек
+
+🔹 Переведите {price_service.format_sol(active_deposit.sol_amount)} на адрес:
+`{user.wallet_address}`
+
+После перевода средства зачислятся автоматически по курсу €{active_deposit.reserved_rate:.2f} за 1 SOL.
+        """
+        
+        await callback.message.answer(deposit_text, parse_mode="Markdown")
+        await callback.answer()
+        return
+    
+    # Get current rate
+    rate = await price_service.get_sol_eur_rate()
+    
+    await state.set_state(DepositStates.waiting_for_eur_amount)
+    
     deposit_text = f"""
 💵 **Пополнение баланса**
 
-Для пополнения баланса переведите SOL на ваш личный адрес:
+📊 Текущий курс: 1 SOL = €{rate:.2f}
 
+Введите сумму для пополнения в **евро (EUR)**:
+
+Например: 5 или 10 или 20
+
+⚠️ **Важно:**
+- Курс зафиксируется на 30 минут
+- У вас будет 30 минут для перевода SOL
+- Зачисление по зафиксированному курсу
+- Минимум: €5
+    """
+    
+    from utils.keyboards import cancel_keyboard
+    await callback.message.answer(deposit_text, reply_markup=cancel_keyboard(), parse_mode="Markdown")
+    await callback.answer()
+
+
+@router.message(DepositStates.waiting_for_eur_amount)
+async def deposit_amount(message: Message, user: User, session: AsyncSession, state: FSMContext):
+    """Process EUR amount for deposit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        from utils.keyboards import main_menu_keyboard
+        await message.answer(
+            "❌ Пополнение отменено.",
+            reply_markup=main_menu_keyboard()
+        )
+        return
+    
+    # Validate amount
+    try:
+        eur_amount = float(message.text.replace(',', '.'))
+    except ValueError:
+        await message.answer("❌ Неверная сумма. Введите число (например: 10)")
+        return
+    
+    if eur_amount < 5:
+        await message.answer("❌ Минимальная сумма пополнения: €5")
+        return
+    
+    # Create deposit request
+    from services.deposit_service import deposit_service
+    from services.price_service import price_service
+    
+    deposit = await deposit_service.create_deposit_request(
+        session, user.id, eur_amount
+    )
+    
+    await state.clear()
+    
+    # Calculate time remaining
+    expires_in_minutes = 30
+    
+    deposit_text = f"""
+✅ **Заявка на пополнение создана!**
+
+💶 Сумма: {price_service.format_eur(deposit.eur_amount)}
+💎 Требуется: {price_service.format_sol(deposit.sol_amount)}
+📊 Зарезервированный курс: 1 SOL = €{deposit.reserved_rate:.2f}
+
+⏳ У вас есть **{expires_in_minutes} минут** для перевода!
+
+🔹 Переведите **{price_service.format_sol(deposit.sol_amount)}** на адрес:
 `{user.wallet_address}`
 
 ⚠️ **Важно:**
-- Переводите только SOL (Solana)
-- Минимальная сумма: {format_sol_amount(0.01)}
-- Средства зачисляются автоматически
-- Обработка занимает несколько минут
+- Переведите ТОЧНУЮ сумму: {deposit.sol_amount:.6f} SOL
+- Курс зафиксирован на 30 минут
+- После перевода зачисление автоматическое
+- Зачислится: {price_service.format_eur(deposit.eur_amount)}
 
-Текущий баланс: {format_sol_amount(user.balance_sol)}
+📅 Действительно до: {deposit.expires_at.strftime('%H:%M:%S')} UTC
     """
     
-    await callback.message.answer(deposit_text, parse_mode="Markdown")
-    await callback.answer()
+    from utils.keyboards import main_menu_keyboard
+    await message.answer(deposit_text, reply_markup=main_menu_keyboard(), parse_mode="Markdown")
 
 
 @router.callback_query(F.data == "withdraw")

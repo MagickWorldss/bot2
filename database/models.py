@@ -156,6 +156,27 @@ class Purchase(Base):
     image: Mapped["Image"] = relationship("Image", back_populates="purchase")
 
 
+class DepositRequest(Base):
+    """Deposit request with reserved exchange rate."""
+    __tablename__ = 'deposit_requests'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'))
+    
+    # Amounts
+    eur_amount: Mapped[float] = mapped_column(Float)  # Amount in EUR
+    sol_amount: Mapped[float] = mapped_column(Float)  # Required SOL amount
+    reserved_rate: Mapped[float] = mapped_column(Float)  # SOL/EUR rate at creation
+    
+    # Status
+    status: Mapped[str] = mapped_column(String(20), default='pending')  # pending, completed, expired, cancelled
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime)  # created_at + 30 minutes
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
 class AdminLog(Base):
     """Admin action log."""
     __tablename__ = 'admin_logs'

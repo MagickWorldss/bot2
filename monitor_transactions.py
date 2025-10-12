@@ -19,24 +19,53 @@ logger = logging.getLogger(__name__)
 
 async def check_user_deposits(session, user: User) -> float:
     """
-    Check for new deposits to user's wallet.
+    Check for new deposits to user's wallet with EUR rate reservation.
     
     Returns:
-        Total amount of new deposits in SOL
+        Amount in EUR to credit (not SOL!)
     """
     try:
+        from services.deposit_service import deposit_service
+        from services.price_service import price_service
+        
         # Get actual balance from blockchain
         actual_balance = await wallet_service.get_balance(user.wallet_address)
         
-        # Calculate difference
-        difference = actual_balance - user.balance_sol
+        # Calculate difference in SOL
+        sol_difference = actual_balance - user.balance_sol
         
-        if difference > 0.0001:  # Ignore dust (< 0.0001 SOL)
+        if sol_difference > 0.0001:  # Ignore dust (< 0.0001 SOL)
             logger.info(
                 f"New deposit detected for user {user.id}: "
-                f"{difference} SOL (balance: {actual_balance})"
+                f"{sol_difference} SOL (balance: {actual_balance})"
             )
-            return difference
+            
+            # Check for active deposit request with reserved rate
+            active_deposit = await deposit_service.get_active_deposit(session, user.id)
+            
+            if active_deposit and abs(sol_difference - active_deposit.sol_amount) < 0.001:
+                # Deposit matches active request - use reserved rate!
+                logger.info(
+                    f"Deposit matches request #{active_deposit.id} "
+                    f"with reserved rate {active_deposit.reserved_rate}"
+                )
+                
+                # Complete deposit request
+                await deposit_service.complete_deposit(session, active_deposit.id)
+                
+                # Return EUR amount (using reserved rate!)
+                return active_deposit.eur_amount
+            else:
+                # No matching request - use current rate
+                rate = await price_service.get_sol_eur_rate()
+                eur_amount = sol_difference * rate
+                
+                logger.info(
+                    f"Deposit without request, using current rate {rate}: "
+                    f"{sol_difference} SOL = {eur_amount} EUR"
+                )
+                
+                return eur_amount
         
         return 0.0
         
@@ -46,12 +75,19 @@ async def check_user_deposits(session, user: User) -> float:
 
 
 async def process_deposits():
-    """Process deposits for all users."""
+    """Process deposits for all users with EUR conversion."""
     logger.info("Starting deposit monitoring...")
     
     while True:
         try:
             async for session in db.get_session():
+                from services.deposit_service import deposit_service
+                
+                # Expire old deposit requests
+                expired_count = await deposit_service.expire_old_deposits(session)
+                if expired_count > 0:
+                    logger.info(f"Expired {expired_count} old deposit requests")
+                
                 # Get all users
                 result = await session.execute(select(User))
                 users = result.scalars().all()
@@ -62,15 +98,19 @@ async def process_deposits():
                     if user.is_blocked:
                         continue
                     
-                    # Check for deposits
-                    deposit_amount = await check_user_deposits(session, user)
+                    # Check for deposits (returns EUR amount!)
+                    eur_amount = await check_user_deposits(session, user)
                     
-                    if deposit_amount > 0:
-                        # Update user balance
+                    if eur_amount > 0:
+                        # Get actual SOL amount for logging
+                        actual_balance = await wallet_service.get_balance(user.wallet_address)
+                        sol_received = actual_balance - user.balance_sol
+                        
+                        # Update user balance in SOL (wallet balance)
                         await UserService.update_balance(
                             session,
                             user.id,
-                            deposit_amount
+                            sol_received
                         )
                         
                         # Create transaction record
@@ -78,15 +118,15 @@ async def process_deposits():
                             session=session,
                             user_id=user.id,
                             tx_type='deposit',
-                            amount_sol=deposit_amount,
+                            amount_sol=sol_received,
                             to_address=user.wallet_address,
-                            description=f"Deposit to wallet",
+                            description=f"Deposit: {eur_amount:.2f} EUR (rate reserved)",
                             status='completed'
                         )
                         
                         logger.info(
                             f"✅ Processed deposit for user {user.id}: "
-                            f"{deposit_amount} SOL"
+                            f"{sol_received:.6f} SOL = {eur_amount:.2f} EUR"
                         )
                 
                 # Wait before next check

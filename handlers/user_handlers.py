@@ -1,4 +1,5 @@
 """User handlers for basic commands."""
+from datetime import datetime
 from aiogram import Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, CallbackQuery
@@ -71,20 +72,56 @@ async def cmd_help(message: Message):
 
 
 @router.message(F.text == "💰 Мой баланс")
-async def show_balance(message: Message, user: User):
-    """Show user balance."""
+async def show_balance_redirect(message: Message, user: User, session: AsyncSession):
+    """Redirect to wallet balance with EUR display."""
+    from services.price_service import price_service
+    from services.deposit_service import deposit_service
+    
+    # Get current rate
+    rate = await price_service.get_sol_eur_rate()
+    balance_eur = await price_service.sol_to_eur(user.balance_sol)
+    
+    # Check for active deposit request
+    active_deposit = await deposit_service.get_active_deposit(session, user.id)
+    
     balance_text = f"""
 💰 **Ваш баланс**
 
-Баланс: {format_sol_amount(user.balance_sol)}
+💶 Баланс: {price_service.format_eur(balance_eur)}
+💎 В SOL: {format_sol_amount(user.balance_sol)}
 
-🔹 Адрес кошелька:
-`{user.wallet_address}`
-
-Переведите SOL на этот адрес для пополнения баланса.
+📊 Текущий курс: 1 SOL = €{rate:.2f}
     """
     
-    await message.answer(balance_text, parse_mode="Markdown")
+    if active_deposit:
+        # Calculate remaining time
+        remaining = active_deposit.expires_at - datetime.utcnow()
+        if remaining.total_seconds() > 0:
+            minutes = int(remaining.total_seconds() / 60)
+            seconds = int(remaining.total_seconds() % 60)
+            
+            balance_text += f"""
+⏳ **Активная заявка на пополнение**
+
+Сумма: {price_service.format_eur(active_deposit.eur_amount)}
+Требуется: {format_sol_amount(active_deposit.sol_amount)}
+Курс: 1 SOL = €{active_deposit.reserved_rate:.2f} (зарезервирован)
+
+Осталось: {minutes} мин {seconds} сек
+
+🔹 Переведите {format_sol_amount(active_deposit.sol_amount)} на адрес:
+`{user.wallet_address}`
+            """
+        else:
+            balance_text += "\n⚠️ Заявка истекла. Создайте новую для пополнения."
+    
+    balance_text += f"""
+🔹 Адрес кошелька:
+`{user.wallet_address}`
+    """
+    
+    from utils.keyboards import wallet_keyboard
+    await message.answer(balance_text, reply_markup=wallet_keyboard(), parse_mode="Markdown")
 
 
 @router.message(F.text == "📍 Выбрать регион")
