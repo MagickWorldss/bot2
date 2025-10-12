@@ -5,11 +5,61 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
-from utils.keyboards import quests_menu_keyboard, profile_menu_keyboard
+from utils.keyboards import quests_menu_keyboard, profile_menu_keyboard, shop_menu_keyboard
 
 logger = logging.getLogger(__name__)
 
 router = Router(name='menu_handlers')
+
+
+@router.message(F.text == "🛍 Магазин")
+async def show_shop_menu(message: Message, user: User, session: AsyncSession):
+    """Show shop menu."""
+    from services.price_service import price_service
+    balance_eur = await price_service.sol_to_eur(user.balance_sol)
+    
+    text = f"""
+🛍 **Магазин**
+
+Выберите раздел:
+
+━━━━━━━━━━━━━━━━━━━━
+
+🛍 **Каталог товаров**
+Цифровые товары за деньги
+• Товары по региону (Литва)
+• Оплата: € (евро)
+• Моментальная покупка
+
+🎁 **Стафф (за баллы)**
+Эксклюзивные товары за баллы
+• Промокоды, бонусы, контент
+• Оплата: ✨ баллы
+• Нельзя купить за деньги!
+
+━━━━━━━━━━━━━━━━━━━━
+
+💶 Ваш баланс: {price_service.format_eur(balance_eur)}
+✨ Ваши баллы: **{user.achievement_points}**
+    """
+    
+    await message.answer(text, reply_markup=shop_menu_keyboard(), parse_mode="Markdown")
+
+
+@router.callback_query(F.data == "catalog_menu")
+async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show catalog from menu."""
+    from handlers.catalog_handlers import show_catalog
+    await show_catalog(callback.message, user, session)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "staff_menu")
+async def staff_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show staff shop from menu."""
+    from handlers.staff_handlers import show_staff_shop
+    await show_staff_shop(callback.message, user, session)
+    await callback.answer()
 
 
 @router.message(F.text == "🎯 Квесты")

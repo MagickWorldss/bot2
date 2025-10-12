@@ -15,13 +15,24 @@ def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     
     # 4 main buttons
-    builder.button(text="🛍 Каталог")
+    builder.button(text="🛍 Магазин")
     builder.button(text="🎯 Квесты")
     builder.button(text="👤 Профиль")
     builder.button(text="ℹ️ Помощь")
     
     builder.adjust(2, 2)
     return builder.as_markup(resize_keyboard=True)
+
+
+def shop_menu_keyboard() -> InlineKeyboardMarkup:
+    """Shop submenu keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="🛍 Каталог товаров", callback_data="catalog_menu")
+    builder.button(text="🎁 Стафф (за баллы)", callback_data="staff_menu")
+    
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def quests_menu_keyboard() -> InlineKeyboardMarkup:
