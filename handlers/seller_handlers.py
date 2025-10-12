@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 router = Router(name='seller_handlers')
 
 
-@router.message(F.text == "📦 Мои товары")
-async def my_products(message: Message, user: User, session: AsyncSession):
+@router.callback_query(F.data == "my_products_menu")
+async def my_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show seller's products."""
     # Check if user is seller, moderator or admin
     if user.role not in ['seller', 'moderator', 'admin']:
-        await message.answer("⛔️ У вас нет доступа к этой функции.")
+        await callback.answer("⛔️ У вас нет доступа к этой функции.", show_alert=True)
         return
     
     # Get products added by this user
@@ -32,11 +32,11 @@ async def my_products(message: Message, user: User, session: AsyncSession):
         title = "📦 **Мои товары:**"
     
     if not images:
-        await message.answer(
+        await callback.message.edit_text(
             "📭 У вас пока нет добавленных товаров.\n\n"
-            "Используйте: /god → ➕ Добавить товар",
-            reply_markup=main_menu_keyboard(user_role=user.role)
+            "Используйте: /god → ➕ Добавить товар"
         )
+        await callback.answer()
         return
     
     # Build keyboard with products
@@ -60,14 +60,15 @@ async def my_products(message: Message, user: User, session: AsyncSession):
             callback_data=f"manage_product_{img.id}"
         )
     
-    builder.button(text="🔙 Назад", callback_data="back_to_main_from_products")
+    builder.button(text="🔙 Назад к магазину", callback_data="back_to_shop_from_products")
     builder.adjust(2)
     
-    await message.answer(
+    await callback.message.edit_text(
         text,
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("manage_product_"))
@@ -189,13 +190,16 @@ async def delete_product(callback: CallbackQuery, user: User, session: AsyncSess
 @router.callback_query(F.data == "back_to_my_products")
 async def back_to_my_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to products list."""
-    await my_products(callback.message, user, session)
+    await my_products(callback, user, session)
+
+
+@router.callback_query(F.data == "back_to_shop_from_products")
+async def back_to_shop_from_products(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Return to shop menu."""
+    from handlers.menu_handlers import show_shop_menu
     await callback.message.delete()
-
-
-@router.callback_query(F.data == "back_to_main_from_products")
-async def back_to_main_from_products(callback: CallbackQuery, user: User):
-    """Return to main menu."""
-    await callback.message.edit_text("🏠 Главное меню")
-    await callback.answer()
+    # Send new message with shop menu
+    from aiogram.types import Message as Msg
+    fake_message = callback.message
+    await show_shop_menu(fake_message, user, session)
 

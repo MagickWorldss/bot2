@@ -20,7 +20,8 @@ router = Router(name='user_handlers')
 async def cmd_start(message: Message, user: User, session: AsyncSession):
     """Handle /start command."""
     from services.price_service import price_service
-    balance_eur = await price_service.sol_to_eur(user.balance_sol)
+    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_sol
     
     welcome_text = f"""
 👋 **Добро пожаловать, {user.first_name or 'пользователь'}!**
@@ -139,7 +140,8 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
     
     # Get current rate
     rate = await price_service.get_sol_eur_rate()
-    balance_eur = await price_service.sol_to_eur(user.balance_sol)
+    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_sol
     
     # Check for active deposit request
     active_deposit = await deposit_service.get_active_deposit(session, user.id)
@@ -161,7 +163,7 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
 
 📊 Статистика:
 ├ Покупок: {rating_info['total_purchases']}
-├ Потрачено: {price_service.format_eur(await price_service.sol_to_eur(rating_info['total_spent_sol']))}
+├ Потрачено: €{rating_info['total_spent_sol']:.2f}
 └ Возвратов: {rating_info['refunds_count']}
 
 ━━━━━━━━━━━━━━━━━━━━

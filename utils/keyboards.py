@@ -20,21 +20,22 @@ def main_menu_keyboard(language: str = 'ru', user_role: str = 'user') -> ReplyKe
     builder.button(text="👤 Профиль")
     builder.button(text="ℹ️ Помощь")
     
-    # Add product management for sellers, moderators, admins
-    if user_role in ['seller', 'moderator', 'admin']:
-        builder.button(text="📦 Мои товары")
-    
-    builder.adjust(2, 2, 1) if user_role in ['seller', 'moderator', 'admin'] else builder.adjust(2, 2)
+    # Always 4 buttons - product management moved to Shop submenu
+    builder.adjust(2, 2)
     return builder.as_markup(resize_keyboard=True)
 
 
-def shop_menu_keyboard() -> InlineKeyboardMarkup:
+def shop_menu_keyboard(user_role: str = 'user') -> InlineKeyboardMarkup:
     """Shop submenu keyboard."""
     builder = InlineKeyboardBuilder()
     
     builder.button(text="🛍 Каталог товаров", callback_data="catalog_menu")
     builder.button(text="🎁 Стафф (за баллы)", callback_data="staff_menu")
     builder.button(text="📍 Изменить регион", callback_data="change_region_menu")
+    
+    # Add product management for sellers, moderators, admins
+    if user_role in ['seller', 'moderator', 'admin']:
+        builder.button(text="📦 Мои товары", callback_data="my_products_menu")
     
     builder.adjust(1)
     return builder.as_markup()
