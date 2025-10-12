@@ -63,8 +63,12 @@ async def is_admin_filter(message: Message, user: User) -> bool:
 @router.message(F.text == "➕ Добавить товар")
 async def add_product_start(message: Message, user: User, session: AsyncSession, state: FSMContext):
     """Start adding product."""
-    if not is_admin(user.id, settings.admin_list):
-        await message.answer("⛔️ У вас нет доступа к этой функции.")
+    # Check role: admin, moderator, seller can add products
+    from services.role_service import role_service
+    allowed_roles = ['admin', 'moderator', 'seller']
+    
+    if user.role not in allowed_roles:
+        await message.answer("⛔️ У вас нет доступа к этой функции.\n\nДобавлять товары могут только продавцы, модераторы и администраторы.")
         return
     
     # Get regions
@@ -1092,7 +1096,7 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
         f"Username: @{target_user.username or 'N/A'}\n"
         f"Статус: {status}\n"
         f"👑 Роль: **{role_name}**\n\n"
-        f"💰 Баланс: {format_sol_amount(target_user.balance_sol)}\n"
+        f"💶 Баланс: €{target_user.balance_sol:.2f}\n"
         f"📍 Локация: {location}\n"
         f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"Выберите действие:"
