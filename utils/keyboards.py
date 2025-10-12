@@ -107,6 +107,26 @@ def cities_keyboard(cities: List[City], back_to_regions: bool = True) -> InlineK
     return builder.as_markup()
 
 
+def districts_keyboard(districts: List, back_callback: str = "back_to_cities") -> InlineKeyboardMarkup:
+    """Inline keyboard with districts."""
+    from database.models import District
+    builder = InlineKeyboardBuilder()
+    
+    for district in districts:
+        builder.button(
+            text=f"📍 {district.name}",
+            callback_data=f"district_{district.id}"
+        )
+    
+    builder.button(
+        text="◀️ Назад",
+        callback_data=back_callback
+    )
+    
+    builder.adjust(2)
+    return builder.as_markup()
+
+
 def catalog_keyboard(
     images: List[Image],
     page: int = 0,
@@ -242,6 +262,31 @@ def admin_region_actions_keyboard(region_id: int, is_active: bool) -> InlineKeyb
     )
     
     builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_district_management_keyboard(districts: List, city_id: int) -> InlineKeyboardMarkup:
+    """Admin keyboard for district management."""
+    builder = InlineKeyboardBuilder()
+    
+    for district in districts:
+        status = "✅" if district.is_active else "❌"
+        builder.button(
+            text=f"{status} {district.name}",
+            callback_data=f"admin_district_{district.id}"
+        )
+    
+    builder.button(
+        text="➕ Добавить микрорайон",
+        callback_data=f"admin_add_district_{city_id}"
+    )
+    
+    builder.button(
+        text="◀️ Назад к городу",
+        callback_data=f"admin_back_to_city_{city_id}"
+    )
+    
+    builder.adjust(2)
     return builder.as_markup()
 
 

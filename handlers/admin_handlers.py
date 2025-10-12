@@ -44,6 +44,11 @@ class AddCityStates(StatesGroup):
     waiting_for_name = State()
 
 
+class AddDistrictStates(StatesGroup):
+    """States for adding district."""
+    waiting_for_name = State()
+
+
 class AddBalanceState(StatesGroup):
     """State for adding balance."""
     waiting_for_amount = State()
@@ -643,6 +648,9 @@ async def admin_city_actions(callback: CallbackQuery, session: AsyncSession):
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
     
+    # Manage districts button
+    builder.button(text="📍 Управление микрорайонами", callback_data=f"admin_districts_{city_id}")
+    
     toggle_text = "🔴 Деактивировать" if city.is_active else "🟢 Активировать"
     builder.button(text=toggle_text, callback_data=f"admin_toggle_city_{city_id}")
     
@@ -703,6 +711,242 @@ async def toggle_city_status(callback: CallbackQuery, session: AsyncSession):
     )
     
     await callback.answer(f"✅ Статус изменен на: {status}")
+
+
+@router.callback_query(F.data.startswith("admin_districts_"))
+async def admin_manage_districts(callback: CallbackQuery, session: AsyncSession):
+    """Manage districts in city."""
+    city_id = int(callback.data.split("_")[2])
+    city = await LocationService.get_city_by_id(session, city_id)
+    
+    if not city:
+        await callback.answer("❌ Город не найден.", show_alert=True)
+        return
+    
+    from services.district_service import district_service
+    districts = await district_service.get_districts_by_city(session, city_id, active_only=False)
+    
+    from utils.keyboards import admin_district_management_keyboard
+    keyboard = admin_district_management_keyboard(districts, city_id)
+    
+    await callback.message.edit_text(
+        f"📍 **Микрорайоны в городе {city.name}**\n\n"
+        f"Всего: {len(districts)}\n\n"
+        f"Выберите микрорайон для управления:",
+        reply_markup=keyboard,
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_district_"))
+async def admin_district_actions(callback: CallbackQuery, session: AsyncSession):
+    """Show district actions."""
+    district_id = int(callback.data.split("_")[2])
+    
+    from services.district_service import district_service
+    district = await district_service.get_district_by_id(session, district_id)
+    
+    if not district:
+        await callback.answer("❌ Микрорайон не найден.", show_alert=True)
+        return
+    
+    # Get city
+    city = await LocationService.get_city_by_id(session, district.city_id)
+    
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    
+    toggle_text = "🔴 Деактивировать" if district.is_active else "🟢 Активировать"
+    builder.button(text=toggle_text, callback_data=f"admin_toggle_district_{district_id}")
+    
+    builder.button(text="🗑 Удалить микрорайон", callback_data=f"admin_delete_district_{district_id}")
+    
+    builder.button(text="◀️ Назад", callback_data=f"admin_districts_{district.city_id}")
+    
+    builder.adjust(1)
+    
+    status = "Активен" if district.is_active else "Неактивен"
+    
+    await callback.message.edit_text(
+        f"📍 **Микрорайон: {district.name}**\n\n"
+        f"Город: {city.name}\n"
+        f"Статус: {status}\n\n"
+        f"Выберите действие:",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_toggle_district_"))
+async def toggle_district_status(callback: CallbackQuery, session: AsyncSession):
+    """Toggle district active status."""
+    district_id = int(callback.data.split("_")[3])
+    
+    from services.district_service import district_service
+    district = await district_service.get_district_by_id(session, district_id)
+    
+    if not district:
+        await callback.answer("❌ Микрорайон не найден.", show_alert=True)
+        return
+    
+    # Toggle status
+    await district_service.toggle_district_active(session, district_id, not district.is_active)
+    
+    # Refresh and show again
+    district = await district_service.get_district_by_id(session, district_id)
+    city = await LocationService.get_city_by_id(session, district.city_id)
+    
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    
+    toggle_text = "🔴 Деактивировать" if district.is_active else "🟢 Активировать"
+    builder.button(text=toggle_text, callback_data=f"admin_toggle_district_{district_id}")
+    builder.button(text="🗑 Удалить микрорайон", callback_data=f"admin_delete_district_{district_id}")
+    builder.button(text="◀️ Назад", callback_data=f"admin_districts_{district.city_id}")
+    builder.adjust(1)
+    
+    status = "Активен" if district.is_active else "Неактивен"
+    
+    await callback.message.edit_text(
+        f"📍 **Микрорайон: {district.name}**\n\n"
+        f"Город: {city.name}\n"
+        f"Статус: {status}\n\n"
+        f"Выберите действие:",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer(f"✅ Статус изменен на: {status}")
+
+
+@router.callback_query(F.data.startswith("admin_add_district_"))
+async def add_district_start(callback: CallbackQuery, state: FSMContext):
+    """Start adding new district."""
+    city_id = int(callback.data.split("_")[3])
+    
+    await state.update_data(city_id=city_id)
+    await state.set_state(AddDistrictStates.waiting_for_name)
+    
+    await callback.message.answer(
+        "➕ **Добавление микрорайона**\n\n"
+        "Введите название микрорайона:\n"
+        "Например: Антакальнис",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(AddDistrictStates.waiting_for_name)
+async def add_district_name(message: Message, session: AsyncSession, user: User, state: FSMContext):
+    """Process district name and save."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление микрорайона отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    name = message.text.strip()
+    
+    # Get data from state
+    data = await state.get_data()
+    city_id = data['city_id']
+    
+    # Create district
+    from services.district_service import district_service
+    from database.models import AdminLog
+    
+    try:
+        district = await district_service.create_district(session, name, city_id)
+        
+        # Log admin action
+        log = AdminLog(
+            admin_id=user.id,
+            action="add_district",
+            details=f"Added district: {name} to city {city_id}"
+        )
+        session.add(log)
+        await session.commit()
+        
+        await message.answer(
+            f"✅ Микрорайон '{name}' успешно добавлен!",
+            reply_markup=admin_menu_keyboard()
+        )
+        
+    except Exception as e:
+        logger.error(f"Error adding district: {e}")
+        await message.answer(
+            f"❌ Ошибка при добавлении микрорайона.",
+            reply_markup=admin_menu_keyboard()
+        )
+    
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith("admin_delete_district_"))
+async def delete_district_confirm(callback: CallbackQuery, session: AsyncSession):
+    """Delete district."""
+    district_id = int(callback.data.split("_")[3])
+    
+    from services.district_service import district_service
+    district = await district_service.get_district_by_id(session, district_id)
+    
+    if not district:
+        await callback.answer("❌ Микрорайон не найден.", show_alert=True)
+        return
+    
+    city_id = district.city_id
+    district_name = district.name
+    
+    # Check if district has images
+    from services.image_service import ImageService
+    from sqlalchemy import select
+    from database.models import Image
+    stmt = select(Image).where(Image.district_id == district_id)
+    result = await session.execute(stmt)
+    images = result.scalars().all()
+    image_count = len(images)
+    
+    if image_count > 0:
+        await callback.answer(
+            f"❌ Невозможно удалить микрорайон!\n"
+            f"В нем есть {image_count} товаров.\n"
+            f"Сначала удалите товары.",
+            show_alert=True
+        )
+        return
+    
+    # Delete district
+    success = await district_service.delete_district(session, district_id)
+    
+    if success:
+        await callback.answer(f"✅ Микрорайон '{district_name}' удален!", show_alert=True)
+        
+        # Return to districts list
+        districts = await district_service.get_districts_by_city(session, city_id, active_only=False)
+        from utils.keyboards import admin_district_management_keyboard
+        keyboard = admin_district_management_keyboard(districts, city_id)
+        
+        city = await LocationService.get_city_by_id(session, city_id)
+        
+        await callback.message.edit_text(
+            f"📍 **Микрорайоны в городе {city.name}**\n\n"
+            f"Выберите микрорайон для управления:",
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    else:
+        await callback.answer("❌ Ошибка при удалении микрорайона.", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("admin_back_to_city_"))
+async def admin_back_to_city(callback: CallbackQuery, session: AsyncSession):
+    """Return to city menu."""
+    city_id = int(callback.data.split("_")[4])
+    await admin_city_actions(callback, session)
 
 
 @router.callback_query(F.data.startswith("admin_delete_city_"))

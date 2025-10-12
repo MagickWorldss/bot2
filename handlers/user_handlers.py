@@ -193,7 +193,7 @@ async def select_city_callback(
     user: User,
     session: AsyncSession
 ):
-    """Handle city selection."""
+    """Handle city selection - show districts."""
     city_id = int(callback.data.split("_")[1])
     
     # Get city details
@@ -202,15 +202,71 @@ async def select_city_callback(
         await callback.answer("❌ Город не найден.", show_alert=True)
         return
     
-    # Update user location
-    await UserService.set_location(session, user.id, city.region_id, city_id)
+    # Get districts in city
+    from services.district_service import district_service
+    districts = await district_service.get_districts_by_city(session, city_id)
     
-    # Load region
-    await session.refresh(city, ['region'])
+    if not districts:
+        # No districts - save city directly
+        await UserService.set_location(session, user.id, city.region_id, city_id)
+        await session.refresh(city, ['region'])
+        
+        await callback.message.edit_text(
+            f"✅ Вы выбрали: {city.region.name}, {city.name}\n\n"
+            f"Теперь вы можете просмотреть каталог товаров."
+        )
+        await callback.answer("✅ Локация сохранена!")
+        return
+    
+    # Show districts
+    from utils.keyboards import districts_keyboard
+    keyboard = districts_keyboard(districts, back_callback=f"region_{city.region_id}")
     
     await callback.message.edit_text(
-        f"✅ Вы выбрали: {city.region.name}, {city.name}\n\n"
-        f"Теперь вы можете просмотреть каталог товаров для вашего региона."
+        f"📍 Выберите микрорайон в городе {city.name}:",
+        reply_markup=keyboard
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("district_"))
+async def select_district_callback(
+    callback: CallbackQuery,
+    user: User,
+    session: AsyncSession
+):
+    """Handle district selection."""
+    district_id = int(callback.data.split("_")[1])
+    
+    # Get district details
+    from services.district_service import district_service
+    district = await district_service.get_district_by_id(session, district_id)
+    
+    if not district:
+        await callback.answer("❌ Микрорайон не найден.", show_alert=True)
+        return
+    
+    # Get city and region
+    city = await LocationService.get_city_by_id(session, district.city_id)
+    await session.refresh(city, ['region'])
+    
+    # Update user location with district
+    from sqlalchemy import update
+    from database.models import User as UserModel
+    stmt = update(UserModel).where(UserModel.id == user.id).values(
+        region_id=city.region_id,
+        city_id=city.id,
+        district_id=district_id
+    )
+    await session.execute(stmt)
+    await session.commit()
+    
+    await callback.message.edit_text(
+        f"✅ Вы выбрали:\n"
+        f"🌍 {city.region.name}\n"
+        f"🏙 {city.name}\n"
+        f"📍 {district.name}\n\n"
+        f"Теперь вы можете просмотреть каталог товаров для вашего микрорайона."
     )
     await callback.answer("✅ Локация сохранена!")
 
