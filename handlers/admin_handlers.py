@@ -10,6 +10,7 @@ from database.models import User, AdminLog
 from services.image_service import ImageService
 from services.location_service import LocationService
 from services.user_service import UserService
+from services.transaction_service import TransactionService
 from utils.keyboards import (
     admin_region_management_keyboard,
     admin_region_actions_keyboard,
@@ -1366,6 +1367,9 @@ async def admin_add_balance_amount(
         target_user = await UserService.get_user(session, target_user_id)
         
         operation = "добавлено" if amount >= 0 else "списано"
+        
+        # Refresh user to get updated balance
+        await session.refresh(target_user)
         
         await message.answer(
             f"✅ *Баланс изменен!*\n\n"

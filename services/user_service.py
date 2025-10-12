@@ -1,9 +1,12 @@
 """User service for managing users."""
+import logging
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.models import User, Region, City
 from services.wallet_service import wallet_service
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
@@ -68,6 +71,8 @@ class UserService:
         
         user.balance_sol += amount
         await session.commit()
+        await session.refresh(user)  # Refresh to ensure changes are saved
+        logger.info(f"User {user_id} balance updated: {amount:+.2f}, new balance: {user.balance_sol:.2f}")
         return True
     
     @staticmethod

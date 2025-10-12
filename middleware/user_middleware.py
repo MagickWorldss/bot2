@@ -25,7 +25,7 @@ class UserMiddleware(BaseMiddleware):
         
         # Get database session
         async for session in db.get_session():
-            # Get or create user
+            # Get or create user - ALWAYS fetch fresh from DB
             db_user = await UserService.get_or_create_user(
                 session=session,
                 user_id=user.id,
@@ -33,6 +33,9 @@ class UserMiddleware(BaseMiddleware):
                 first_name=user.first_name,
                 last_name=user.last_name
             )
+            
+            # Refresh user to get latest data (role, balance, etc.)
+            await session.refresh(db_user)
             
             # Check if user is blocked
             if db_user.is_blocked:
