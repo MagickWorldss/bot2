@@ -44,6 +44,11 @@ class AddCityStates(StatesGroup):
     waiting_for_name = State()
 
 
+class AddBalanceState(StatesGroup):
+    """State for adding balance."""
+    waiting_for_amount = State()
+
+
 # Admin check filter
 async def is_admin_filter(message: Message, user: User) -> bool:
     """Check if user is admin."""
@@ -1043,11 +1048,6 @@ async def admin_add_balance_init(callback: CallbackQuery, state: FSMContext):
         parse_mode="Markdown"
     )
     await callback.answer()
-
-
-class AddBalanceState(StatesGroup):
-    """State for adding balance."""
-    waiting_for_amount = State()
 
 
 @router.message(AddBalanceState.waiting_for_amount)
