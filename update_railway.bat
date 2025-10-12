@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ФИНАЛ: Финансы 100% EUR + Продавцы могут добавлять товары"
+git commit -m "✅ ФИНАЛ: FSMContext импорт + финансы EUR + продавцы работают"
 
 echo.
 echo 3. Загрузка на GitHub...
