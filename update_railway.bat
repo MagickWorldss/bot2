@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ИСПРАВЛЕНО: price_sol + Markdown + роли продавцов"
+git commit -m "✅ ФИНАЛ: Все ошибки исправлены + роли работают"
 
 echo.
 echo 3. Загрузка на GitHub...

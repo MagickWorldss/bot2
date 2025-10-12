@@ -1096,8 +1096,14 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     role_name = role_service.get_role_name(target_user.role, 'ru')
     
     # Escape special characters for Markdown
-    first_name = (target_user.first_name or 'N/A').replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
-    username_display = f"@{target_user.username.replace('_', '\\_')}" if target_user.username else 'N/A'
+    first_name = target_user.first_name or 'N/A'
+    first_name = first_name.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
+    
+    if target_user.username:
+        username_escaped = target_user.username.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace('`', '\\`')
+        username_display = f"@{username_escaped}"
+    else:
+        username_display = 'N/A'
     
     user_info = (
         f"👤 *Пользователь*\n\n"
