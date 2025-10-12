@@ -14,46 +14,23 @@ logger = logging.getLogger(__name__)
 async def initialize_database():
     """Initialize database with default data if needed."""
     from database.database import db
-    from services.location_service import LocationService
+    from init_db import init_db_data
     
     logger.info("Checking database initialization...")
     
     # Check if regions exist
     async for session in db.get_session():
+        from services.location_service import LocationService
         regions = await LocationService.get_all_regions(session, active_only=False)
         
         if regions:
             logger.info("Database already initialized. Skipping...")
             return
         
-        logger.info("Initializing database with default regions...")
+        logger.info("Initializing database with Lithuania structure...")
         
-        # EU Countries with major cities
-        default_data = [
-            {'name': 'Germany', 'code': 'DE', 'cities': ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne', 'Stuttgart']},
-            {'name': 'France', 'code': 'FR', 'cities': ['Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes']},
-            {'name': 'Spain', 'code': 'ES', 'cities': ['Madrid', 'Barcelona', 'Valencia', 'Seville', 'Bilbao', 'Malaga']},
-            {'name': 'Italy', 'code': 'IT', 'cities': ['Rome', 'Milan', 'Naples', 'Turin', 'Florence', 'Venice']},
-            {'name': 'Netherlands', 'code': 'NL', 'cities': ['Amsterdam', 'Rotterdam', 'The Hague', 'Utrecht', 'Eindhoven']},
-            {'name': 'Belgium', 'code': 'BE', 'cities': ['Brussels', 'Antwerp', 'Ghent', 'Bruges', 'Liege']},
-            {'name': 'Poland', 'code': 'PL', 'cities': ['Warsaw', 'Krakow', 'Wroclaw', 'Poznan', 'Gdansk']},
-            {'name': 'Austria', 'code': 'AT', 'cities': ['Vienna', 'Salzburg', 'Innsbruck', 'Graz', 'Linz']},
-            {'name': 'Czech Republic', 'code': 'CZ', 'cities': ['Prague', 'Brno', 'Ostrava', 'Plzen', 'Liberec']},
-            {'name': 'Portugal', 'code': 'PT', 'cities': ['Lisbon', 'Porto', 'Braga', 'Coimbra', 'Faro']},
-            {'name': 'Sweden', 'code': 'SE', 'cities': ['Stockholm', 'Gothenburg', 'Malmo', 'Uppsala', 'Vasteras']},
-            {'name': 'Denmark', 'code': 'DK', 'cities': ['Copenhagen', 'Aarhus', 'Odense', 'Aalborg', 'Esbjerg']},
-        ]
-        
-        for region_data in default_data:
-            try:
-                region = await LocationService.create_region(session, name=region_data['name'], code=region_data['code'])
-                logger.info(f"✓ Created region: {region.name}")
-                
-                for city_name in region_data['cities']:
-                    city = await LocationService.create_city(session, name=city_name, region_id=region.id)
-                    logger.info(f"  ✓ Created city: {city.name}")
-            except Exception as e:
-                logger.error(f"✗ Error creating region {region_data['name']}: {e}")
+        # Use init_db_data which has Lithuania with districts
+        await init_db_data(session)
         
         logger.info("✅ Database initialization complete!")
 

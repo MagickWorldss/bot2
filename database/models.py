@@ -32,6 +32,7 @@ class User(Base):
     # Location
     region_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('regions.id'), nullable=True)
     city_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('cities.id'), nullable=True)
+    district_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('districts.id'), nullable=True)
     
     # Settings
     language: Mapped[str] = mapped_column(String(10), default='ru')  # ru, en, lt, pl, de, cs
@@ -82,6 +83,17 @@ class City(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class District(Base):
+    """District/Microdistrict model."""
+    __tablename__ = 'districts'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    city_id: Mapped[int] = mapped_column(Integer, ForeignKey('cities.id'))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class Image(Base):
     """Image/Product model."""
     __tablename__ = 'images'
@@ -92,6 +104,7 @@ class Image(Base):
     price_sol: Mapped[float] = mapped_column(Float)
     region_id: Mapped[int] = mapped_column(Integer, ForeignKey('regions.id'))
     city_id: Mapped[int] = mapped_column(Integer, ForeignKey('cities.id'))
+    district_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('districts.id'), nullable=True)
     
     is_sold: Mapped[bool] = mapped_column(Boolean, default=False)
     sold_to: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey('users.id'), nullable=True)

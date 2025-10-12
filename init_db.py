@@ -1,122 +1,179 @@
-"""Initialize database with default data."""
+"""Database initialization script for Lithuania structure."""
 import asyncio
+import logging
 from database.database import db
-from database.models import Region, City
+from database.models import Region, City, District
 from services.location_service import LocationService
-from sqlalchemy.ext.asyncio import AsyncSession
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-async def init_default_regions():
-    """Initialize default EU regions and cities."""
-    async for session in db.get_session():
-        # Check if regions already exist
+# Lithuania cities and districts structure
+LITHUANIA_STRUCTURE = {
+    "Вильнюс": [
+        "Антакальнис",
+        "Вяркяй",
+        "Жирмунай",
+        "Жвиряй",
+        "Каролинишкес",
+        "Лаздинай",
+        "Науйининкай",
+        "Науяместис",
+        "Панеряй",
+        "Пашилайчяй",
+        "Пилайте",
+        "Расос",
+        "Сенаместис (Старый город)",
+        "Шешкине",
+        "Шнипишкес",
+        "Ужупис",
+        "Фабийонишкес"
+    ],
+    "Каунас": [
+        "Алексотас",
+        "Виляймполе",
+        "Дайнава",
+        "Жалякальнис",
+        "Центр",
+        "Паняряй",
+        "Петрашюнай",
+        "Шанчяй",
+        "Шилайняй",
+        "Эйгуляй"
+    ],
+    "Клайпеда": [
+        "Банга",
+        "Вите",
+        "Жардининкай",
+        "Майронис",
+        "Мелнраге",
+        "Науйойи Клайпеда",
+        "Паупяй",
+        "Смелте",
+        "Центр",
+        "Швянтойи"
+    ],
+    "Шяуляй": [
+        "Баублис",
+        "Гинкунай",
+        "Говерос",
+        "Дубравос",
+        "Ежерас",
+        "Таленай",
+        "Центр"
+    ],
+    "Паневежис": [
+        "Алкснупяй",
+        "Драугисте",
+        "Екимишкис",
+        "Книйшес",
+        "Маргис",
+        "Парко",
+        "Центр"
+    ],
+    "Алитус": [
+        "Аникщяй",
+        "Дайнава",
+        "Миронас",
+        "Науяместис",
+        "Сенаместис",
+        "Центр"
+    ],
+    "Мариямполе": [
+        "Гудишкес",
+        "Дегучай",
+        "Сасначука",
+        "Саулес",
+        "Центр"
+    ],
+    "Тельшяй": [
+        "Гадунава",
+        "Джукстай",
+        "Жемайчю",
+        "Центр"
+    ],
+    "Утена": [
+        "Даугайляй",
+        "Крошняй",
+        "Науяместис",
+        "Вякшняй",
+        "Центр"
+    ],
+    "Таураге": [
+        "Лауко",
+        "Даужай",
+        "Полесе",
+        "Центр"
+    ]
+}
+
+
+async def init_db_data(session):
+    """Initialize database with Lithuania data."""
+    try:
+        # Check if Lithuania already exists
         regions = await LocationService.get_all_regions(session, active_only=False)
+        lithuania = next((r for r in regions if r.name == "Литва"), None)
         
-        if regions:
-            print("Database already has regions. Skipping initialization.")
+        if lithuania:
+            logger.info("Литва уже существует, пропускаю инициализацию")
             return
         
-        print("Initializing default regions and cities...")
+        # Create Lithuania region
+        logger.info("Создаю регион: Литва")
+        lithuania = await LocationService.create_region(
+            session=session,
+            name="Литва",
+            code="LT"
+        )
         
-        # EU Countries with major cities
-        default_data = [
-            {
-                'name': 'Germany',
-                'code': 'DE',
-                'cities': ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne', 'Stuttgart']
-            },
-            {
-                'name': 'France',
-                'code': 'FR',
-                'cities': ['Paris', 'Marseille', 'Lyon', 'Toulouse', 'Nice', 'Nantes']
-            },
-            {
-                'name': 'Spain',
-                'code': 'ES',
-                'cities': ['Madrid', 'Barcelona', 'Valencia', 'Seville', 'Bilbao', 'Malaga']
-            },
-            {
-                'name': 'Italy',
-                'code': 'IT',
-                'cities': ['Rome', 'Milan', 'Naples', 'Turin', 'Florence', 'Venice']
-            },
-            {
-                'name': 'Netherlands',
-                'code': 'NL',
-                'cities': ['Amsterdam', 'Rotterdam', 'The Hague', 'Utrecht', 'Eindhoven']
-            },
-            {
-                'name': 'Belgium',
-                'code': 'BE',
-                'cities': ['Brussels', 'Antwerp', 'Ghent', 'Bruges', 'Liege']
-            },
-            {
-                'name': 'Poland',
-                'code': 'PL',
-                'cities': ['Warsaw', 'Krakow', 'Wroclaw', 'Poznan', 'Gdansk']
-            },
-            {
-                'name': 'Austria',
-                'code': 'AT',
-                'cities': ['Vienna', 'Salzburg', 'Innsbruck', 'Graz', 'Linz']
-            },
-            {
-                'name': 'Czech Republic',
-                'code': 'CZ',
-                'cities': ['Prague', 'Brno', 'Ostrava', 'Plzen', 'Liberec']
-            },
-            {
-                'name': 'Portugal',
-                'code': 'PT',
-                'cities': ['Lisbon', 'Porto', 'Braga', 'Coimbra', 'Faro']
-            },
-            {
-                'name': 'Sweden',
-                'code': 'SE',
-                'cities': ['Stockholm', 'Gothenburg', 'Malmo', 'Uppsala', 'Vasteras']
-            },
-            {
-                'name': 'Denmark',
-                'code': 'DK',
-                'cities': ['Copenhagen', 'Aarhus', 'Odense', 'Aalborg', 'Esbjerg']
-            },
-        ]
-        
-        for region_data in default_data:
-            try:
-                # Create region
-                region = await LocationService.create_region(
-                    session,
-                    name=region_data['name'],
-                    code=region_data['code']
+        # Create cities and districts
+        for city_name, districts in LITHUANIA_STRUCTURE.items():
+            logger.info(f"Создаю город: {city_name}")
+            city = await LocationService.create_city(
+                session=session,
+                name=city_name,
+                region_id=lithuania.id
+            )
+            
+            # Create districts
+            for district_name in districts:
+                logger.info(f"  Создаю микрорайон: {district_name}")
+                district = District(
+                    name=district_name,
+                    city_id=city.id,
+                    is_active=True
                 )
-                print(f"✓ Created region: {region.name}")
-                
-                # Create cities
-                for city_name in region_data['cities']:
-                    city = await LocationService.create_city(
-                        session,
-                        name=city_name,
-                        region_id=region.id
-                    )
-                    print(f"  ✓ Created city: {city.name}")
-                
-            except Exception as e:
-                print(f"✗ Error creating region {region_data['name']}: {e}")
+                session.add(district)
         
-        print("\n✅ Database initialization complete!")
+        await session.commit()
+        logger.info("✅ База данных инициализирована: Литва, 10 городов, все микрорайоны")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при инициализации базы данных: {e}")
+        await session.rollback()
+        raise
 
 
 async def main():
     """Main initialization function."""
-    print("Creating database tables...")
-    await db.create_tables()
-    print("✓ Database tables created")
+    logger.info("Creating database tables...")
     
-    print("\nInitializing default data...")
-    await init_default_regions()
+    # Create tables
+    async with db.engine.begin() as conn:
+        from database.models import Base
+        await conn.run_sync(Base.metadata.create_all)
+    
+    logger.info("Database tables created successfully")
+    
+    # Initialize data
+    async for session in db.get_session():
+        await init_db_data(session)
+        break
+    
+    logger.info("Database initialization complete!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
-
