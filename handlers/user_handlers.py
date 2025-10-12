@@ -248,7 +248,7 @@ async def select_district_callback(
     
     # Get city and region
     city = await LocationService.get_city_by_id(session, district.city_id)
-    await session.refresh(city, ['region'])
+    region = await LocationService.get_region_by_id(session, city.region_id)
     
     # Update user location with district
     from sqlalchemy import update
@@ -263,7 +263,7 @@ async def select_district_callback(
     
     await callback.message.edit_text(
         f"✅ Вы выбрали:\n"
-        f"🌍 {city.region.name}\n"
+        f"🌍 {region.name}\n"
         f"🏙 {city.name}\n"
         f"📍 {district.name}\n\n"
         f"Теперь вы можете просмотреть каталог товаров для вашего микрорайона."
