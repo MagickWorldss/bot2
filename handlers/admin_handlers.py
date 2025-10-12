@@ -1284,8 +1284,8 @@ async def admin_view_transactions(callback: CallbackQuery, session: AsyncSession
         }.get(tx.status, '❓')
         
         history_text += (
-            f"{type_emoji} **{tx.tx_type.capitalize()}** {status_emoji}\n"
-            f"Сумма: {format_sol_amount(tx.amount_sol)}\n"
+            f"{type_emoji} *{tx.tx_type.capitalize()}* {status_emoji}\n"
+            f"💶 Сумма: €{tx.amount_sol:.2f}\n"
         )
         
         if tx.fee_sol > 0:
@@ -1312,9 +1312,9 @@ async def admin_add_balance_init(callback: CallbackQuery, state: FSMContext):
     
     await callback.message.answer(
         "💰 **Добавление баланса**\n\n"
-        "Введите сумму в SOL для добавления:\n"
+        "Введите сумму в EUR (€) для добавления:\n"
         "(может быть отрицательной для списания)\n\n"
-        "Например: 0.1 или -0.05",
+        "Например: 10.00 или -5.00",
         reply_markup=cancel_keyboard(),
         parse_mode="Markdown"
     )
@@ -1356,7 +1356,7 @@ async def admin_add_balance_amount(
         log = AdminLog(
             admin_id=user.id,
             action="modify_balance",
-            details=f"Added {amount} SOL to user {target_user_id}"
+            details=f"Added €{amount} to user {target_user_id}"
         )
         session.add(log)
         await session.commit()
@@ -1368,10 +1368,10 @@ async def admin_add_balance_amount(
         operation = "добавлено" if amount >= 0 else "списано"
         
         await message.answer(
-            f"✅ **Баланс изменен!**\n\n"
+            f"✅ *Баланс изменен!*\n\n"
             f"Пользователь: {target_user_id}\n"
-            f"{operation.capitalize()}: {format_sol_amount(abs(amount))}\n"
-            f"Новый баланс: {format_sol_amount(target_user.balance_sol)}",
+            f"{operation.capitalize()}: €{abs(amount):.2f}\n"
+            f"💶 Новый баланс: €{target_user.balance_sol:.2f}",
             reply_markup=admin_menu_keyboard(),
             parse_mode="Markdown"
         )

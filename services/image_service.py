@@ -153,6 +153,27 @@ class ImageService:
         return result.scalar() or 0
     
     @staticmethod
+    async def get_images_by_uploader(session: AsyncSession, user_id: int, limit: int = 50):
+        """Get images uploaded by specific user."""
+        result = await session.execute(
+            select(Image)
+            .where(Image.uploaded_by == user_id)
+            .order_by(Image.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+    
+    @staticmethod
+    async def get_all_images(session: AsyncSession, limit: int = 50):
+        """Get all images."""
+        result = await session.execute(
+            select(Image)
+            .order_by(Image.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+    
+    @staticmethod
     async def get_statistics(session: AsyncSession) -> dict:
         """Get overall statistics."""
         from sqlalchemy import func

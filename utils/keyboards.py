@@ -10,7 +10,7 @@ from typing import List, Optional
 from database.models import Region, City, Image
 
 
-def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
+def main_menu_keyboard(language: str = 'ru', user_role: str = 'user') -> ReplyKeyboardMarkup:
     """Main menu keyboard - simplified."""
     builder = ReplyKeyboardBuilder()
     
@@ -20,7 +20,11 @@ def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
     builder.button(text="👤 Профиль")
     builder.button(text="ℹ️ Помощь")
     
-    builder.adjust(2, 2)
+    # Add product management for sellers, moderators, admins
+    if user_role in ['seller', 'moderator', 'admin']:
+        builder.button(text="📦 Мои товары")
+    
+    builder.adjust(2, 2, 1) if user_role in ['seller', 'moderator', 'admin'] else builder.adjust(2, 2)
     return builder.as_markup(resize_keyboard=True)
 
 

@@ -363,7 +363,7 @@ async def cmd_admin(message: Message, user: User):
 @router.message(F.text == "🔙 Главное меню")
 async def back_to_main_menu(message: Message, user: User):
     """Return to main menu."""
-    keyboard = main_menu_keyboard()
+    keyboard = main_menu_keyboard(user_role=user.role)
     await message.answer(
         "📱 Главное меню",
         reply_markup=keyboard
