@@ -37,6 +37,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Порт (Railway автоматически определяет, но можно указать)
 EXPOSE 8080
 
-# Команда по умолчанию
-CMD ["python", "main.py"]
+# Команда по умолчанию (использует start.py для автоинициализации)
+CMD ["python", "start.py"]
 
