@@ -1,0 +1,43 @@
+# Environment
+.env
+.env.local
+.env.production
+venv/
+env/
+*.pyc
+__pycache__/
+*.so
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# Images (хранятся на сервере)
+images/
+uploads/
+
+# Data
+data/
+wallet_encryption.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Railway
+.railway/
+
+# Git
+.git/
+

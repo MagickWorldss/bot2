@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Основной бот
+  bot:
+    build: .
+    container_name: telegram_shop_bot
+    restart: always
+    volumes:
+      - ./images:/app/images
+      - ./data:/app/data
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - bot_network
+
+  # Монитор транзакций
+  monitor:
+    build: .
+    container_name: telegram_shop_monitor
+    restart: always
+    command: python monitor_transactions.py
+    volumes:
+      - ./images:/app/images
+      - ./data:/app/data
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - bot_network
+
+  # PostgreSQL база данных (опционально, для продакшена)
+  db:
+    image: postgres:15-alpine
+    container_name: telegram_shop_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-botdb}
+      POSTGRES_USER: ${POSTGRES_USER:-botuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bot_network
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+
+networks:
+  bot_network:
+    driver: bridge
+

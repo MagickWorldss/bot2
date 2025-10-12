@@ -1,0 +1,52 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+venv
+env
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docs (не нужны в образе)
+*.md
+LICENSE
+
+# Images (монтируются как volume)
+images/
+
+# Data
+data/
+wallet_encryption.key
+
+# Env (передается отдельно)
+.env
+.env.*
+
