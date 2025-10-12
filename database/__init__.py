@@ -1,5 +1,5 @@
 """Database package."""
-from database.models import Base, User, Region, City, Image, Transaction, Purchase, DepositRequest, AdminLog
+from database.models import Base, User, Region, City, Image, Transaction, Purchase, DepositRequest, PriceList, AdminLog
 from database.database import Database, get_db
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
     'Transaction',
     'Purchase',
     'DepositRequest',
+    'PriceList',
     'AdminLog',
     'Database',
     'get_db',

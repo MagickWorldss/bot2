@@ -30,6 +30,7 @@ class User(Base):
     city_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('cities.id'), nullable=True)
     
     # Settings
+    language: Mapped[str] = mapped_column(String(10), default='ru')  # ru, en, lt, pl, de, cs
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     
@@ -175,6 +176,19 @@ class DepositRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime)  # created_at + 30 minutes
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class PriceList(Base):
+    """Price list text (editable by admin)."""
+    __tablename__ = 'price_lists'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    language: Mapped[str] = mapped_column(String(10), default='ru')  # ru, en, lt, pl, de, cs
+    content: Mapped[str] = mapped_column(Text)
+    
+    updated_by: Mapped[int] = mapped_column(BigInteger)  # Admin who updated
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class AdminLog(Base):

@@ -1,6 +1,6 @@
 """Handlers package."""
 from aiogram import Router
-from handlers import user_handlers, admin_handlers, catalog_handlers, wallet_handlers
+from handlers import user_handlers, admin_handlers, catalog_handlers, wallet_handlers, language_handlers
 
 
 def setup_routers() -> Router:
@@ -12,6 +12,7 @@ def setup_routers() -> Router:
     router.include_router(admin_handlers.router)
     router.include_router(catalog_handlers.router)
     router.include_router(wallet_handlers.router)
+    router.include_router(language_handlers.router)
     
     return router
 

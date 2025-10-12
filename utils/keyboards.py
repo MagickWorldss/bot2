@@ -10,15 +10,19 @@ from typing import List, Optional
 from database.models import Region, City, Image
 
 
-def main_menu_keyboard() -> ReplyKeyboardMarkup:
+def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
     """Main menu keyboard."""
+    from services.language_service import language_service
+    
     builder = ReplyKeyboardBuilder()
-    builder.button(text="🛍 Каталог")
-    builder.button(text="💰 Мой баланс")
-    builder.button(text="📍 Выбрать регион")
-    builder.button(text="📜 История покупок")
-    builder.button(text="ℹ️ Помощь")
-    builder.adjust(2, 2, 1)
+    builder.button(text=language_service.get_text(language, 'catalog'))
+    builder.button(text=language_service.get_text(language, 'balance'))
+    builder.button(text=language_service.get_text(language, 'select_region'))
+    builder.button(text=language_service.get_text(language, 'price_list'))
+    builder.button(text=language_service.get_text(language, 'purchase_history'))
+    builder.button(text=language_service.get_text(language, 'language'))
+    builder.button(text=language_service.get_text(language, 'help'))
+    builder.adjust(2, 2, 2, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -29,8 +33,9 @@ def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     builder.button(text="📊 Статистика")
     builder.button(text="🗂 Управление регионами")
     builder.button(text="👥 Управление пользователями")
+    builder.button(text="✏️ Редактировать прайс-лист")
     builder.button(text="🔙 Главное меню")
-    builder.adjust(2, 2, 1)
+    builder.adjust(2, 2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
