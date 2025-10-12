@@ -264,6 +264,12 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
         status='completed'
     )
     
+    # 4. Update user rating
+    from services.rating_service import rating_service
+    new_rating = await rating_service.update_rating_after_purchase(
+        session, user.id, image.price_sol
+    )
+    
     # Refresh user
     await session.refresh(user)
     

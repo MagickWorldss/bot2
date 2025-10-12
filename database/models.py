@@ -34,6 +34,12 @@ class User(Base):
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     
+    # Rating
+    rating: Mapped[float] = mapped_column(Float, default=0.0)  # User rating (-100 to +100)
+    total_purchases: Mapped[int] = mapped_column(Integer, default=0)
+    total_spent_sol: Mapped[float] = mapped_column(Float, default=0.0)
+    refunds_count: Mapped[int] = mapped_column(Integer, default=0)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

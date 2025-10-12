@@ -90,6 +90,10 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
     # Check for active deposit request
     active_deposit = await deposit_service.get_active_deposit(session, user.id)
     
+    # Get rating info
+    from services.rating_service import rating_service
+    rating_info = await rating_service.get_user_rating_info(session, user.id)
+    
     balance_text = f"""
 💰 **Ваш баланс**
 
@@ -97,6 +101,14 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
 💎 В SOL: {format_sol_amount(user.balance_sol)}
 
 📊 Текущий курс: 1 SOL = €{rate:.2f}
+
+{rating_info['emoji']} **Ваш рейтинг: {rating_info['rating']:+.1f}**
+{rating_info['bar']} {rating_info['level']}
+
+📊 Статистика:
+├ Покупок: {rating_info['total_purchases']}
+├ Потрачено: {price_service.format_eur(await price_service.sol_to_eur(rating_info['total_spent_sol']))}
+└ Возвратов: {rating_info['refunds_count']}
     """
     
     if active_deposit:

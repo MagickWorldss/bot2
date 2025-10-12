@@ -8,6 +8,7 @@ from services.deposit_service import deposit_service
 from services.balance_api import balance_api
 from services.language_service import language_service
 from services.pricelist_service import pricelist_service
+from services.rating_service import rating_service
 
 __all__ = [
     'wallet_service',
@@ -19,5 +20,6 @@ __all__ = [
     'balance_api',
     'language_service',
     'pricelist_service',
+    'rating_service',
 ]
 
