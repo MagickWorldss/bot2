@@ -38,7 +38,7 @@ async def cmd_start(message: Message, user: User, session: AsyncSession):
     
     # Add admin menu button for admins
     if is_admin(user.id, settings.admin_list):
-        welcome_text += "\n\n🔧 Вам доступна админ-панель."
+        welcome_text += "\n\n👑 Вам доступен GOD режим. Команда: /god"
     
     await message.answer(welcome_text, reply_markup=keyboard, parse_mode="Markdown")
 
@@ -57,13 +57,19 @@ async def cmd_help(message: Message):
 4. Выберите товар и купите его
 
 **Пополнение баланса:**
-- Переведите SOL на ваш личный кошелек
-- Средства автоматически зачислятся на баланс
+- Выберите сумму в евро (EUR)
+- Курс зафиксируется на 30 минут
+- Переведите SOL на ваш адрес
+- Зачисление по зафиксированному курсу
 
 **Важно:**
 - Каждый товар продается только один раз
 - После покупки товар сразу удаляется из каталога
-- Средства списываются с вашего внутреннего баланса
+- Баланс отображается в евро (€)
+
+**Команды:**
+- /start - главное меню
+- /help - эта справка
 
 По вопросам: @support
     """
@@ -210,7 +216,7 @@ async def back_to_regions(callback: CallbackQuery, session: AsyncSession):
     await callback.answer()
 
 
-@router.message(Command("admin"))
+@router.message(Command("god"))
 async def cmd_admin(message: Message, user: User):
     """Open admin panel."""
     if not is_admin(user.id, settings.admin_list):
@@ -218,8 +224,9 @@ async def cmd_admin(message: Message, user: User):
         return
     
     admin_text = """
-🔧 **Админ-панель**
+👑 **GOD Mode**
 
+Добро пожаловать в режим администратора!
 Выберите действие:
     """
     
