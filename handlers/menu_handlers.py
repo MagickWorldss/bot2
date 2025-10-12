@@ -49,8 +49,54 @@ async def show_shop_menu(message: Message, user: User, session: AsyncSession):
 @router.callback_query(F.data == "catalog_menu")
 async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show catalog from menu."""
-    from handlers.catalog_handlers import show_catalog
-    await show_catalog(callback.message, user, session)
+    # Check if user selected location
+    if not user.city_id:
+        await callback.message.edit_text(
+            "⚠️ **Сначала выберите ваш регион!**\n\n"
+            "Используйте: 👤 Профиль → настройте локацию",
+            parse_mode="Markdown"
+        )
+        await callback.answer("⚠️ Выберите регион!", show_alert=True)
+        return
+    
+    # Get available images for user's location
+    from services.image_service import ImageService
+    images = await ImageService.get_available_images(
+        session,
+        region_id=user.region_id,
+        city_id=user.city_id
+    )
+    
+    if not images:
+        await callback.message.edit_text(
+            "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
+            "Попробуйте зайти позже.",
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+        return
+    
+    # Show first page
+    from utils.keyboards import catalog_keyboard
+    from utils.helpers import paginate_list
+    
+    page_size = 5
+    pages = paginate_list(images, page_size)
+    current_page = pages[0] if pages else []
+    
+    catalog_text = f"🛍 **Каталог товаров**\n\n"
+    catalog_text += f"📍 Ваш регион: {user.region.name if user.region else 'не указан'}\n"
+    catalog_text += f"🏙 Ваш город: {user.city.name if user.city else 'не указан'}\n\n"
+    catalog_text += f"Найдено товаров: **{len(images)}**\n\n"
+    catalog_text += "Выберите товар для просмотра:"
+    
+    keyboard = catalog_keyboard(current_page, page=0, total_pages=len(pages))
+    
+    await callback.message.edit_text(
+        catalog_text,
+        reply_markup=keyboard,
+        parse_mode="Markdown"
+    )
     await callback.answer()
 
 

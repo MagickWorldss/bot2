@@ -54,6 +54,7 @@ def profile_menu_keyboard() -> InlineKeyboardMarkup:
     
     builder.button(text="💰 Мой баланс", callback_data="my_balance")
     builder.button(text="🎁 Реферальная программа", callback_data="referral_menu")
+    builder.button(text="🎫 Мои промокоды", callback_data="my_promocodes_menu")
     builder.button(text="🏆 Достижения", callback_data="achievements_menu")
     builder.button(text="📜 История покупок", callback_data="purchase_history_menu")
     builder.button(text="🌐 Язык", callback_data="language_menu")
@@ -63,30 +64,30 @@ def profile_menu_keyboard() -> InlineKeyboardMarkup:
 
 
 def admin_menu_keyboard() -> ReplyKeyboardMarkup:
-    """Admin menu keyboard."""
+    """Admin menu keyboard - organized."""
     builder = ReplyKeyboardBuilder()
-    # Row 1
+    
+    # Row 1: Products
     builder.button(text="➕ Добавить товар")
     builder.button(text="📊 Статистика")
-    # Row 2
-    builder.button(text="🗂 Управление регионами")
-    builder.button(text="👥 Управление пользователями")
-    # Row 3
+    
+    # Row 2: Location management
+    builder.button(text="🗂 Регионы и города")
+    
+    # Row 3: User management
+    builder.button(text="👥 Пользователи")
+    
+    # Row 4: Marketing
     builder.button(text="🎫 Промокоды")
     builder.button(text="🎁 Стафф товары")
-    # Row 4
-    builder.button(text="🎯 Квесты")
-    builder.button(text="🧩 Квизы")
-    # Row 5
-    builder.button(text="📢 Рассылка")
-    builder.button(text="🎄 События")
-    # Row 6
-    builder.button(text="🎫 Тикеты поддержки")
-    builder.button(text="✏️ Редактировать прайс-лист")
-    # Row 7
+    
+    # Row 5: Support
+    builder.button(text="🎫 Поддержка")
+    
+    # Row 6: Back
     builder.button(text="🔙 Главное меню")
     
-    builder.adjust(2, 2, 2, 2, 2, 2, 1)
+    builder.adjust(2, 1, 1, 2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
 
 

@@ -17,6 +17,8 @@ from handlers import (
     staff_handlers,
     admin_staff_handlers,
     menu_handlers,
+    admin_support_handlers,
+    user_promocode_handlers,
 )
 
 
@@ -41,6 +43,8 @@ def setup_routers() -> Router:
     router.include_router(staff_handlers.router)
     router.include_router(admin_staff_handlers.router)
     router.include_router(menu_handlers.router)
+    router.include_router(admin_support_handlers.router)
+    router.include_router(user_promocode_handlers.router)
     
     return router
 

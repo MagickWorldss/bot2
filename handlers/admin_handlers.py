@@ -312,7 +312,7 @@ async def show_statistics(message: Message, user: User, session: AsyncSession):
     await message.answer(stats_text, parse_mode="Markdown")
 
 
-@router.message(F.text == "🗂 Управление регионами")
+@router.message(F.text.in_(["🗂 Управление регионами", "🗂 Регионы и города"]))
 async def manage_regions(message: Message, user: User, session: AsyncSession):
     """Manage regions."""
     if not is_admin(user.id, settings.admin_list):
@@ -997,7 +997,7 @@ async def delete_city_confirm(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("❌ Ошибка при удалении города.", show_alert=True)
 
 
-@router.message(F.text == "👥 Управление пользователями")
+@router.message(F.text.in_(["👥 Управление пользователями", "👥 Пользователи"]))
 async def manage_users(message: Message, user: User, session: AsyncSession):
     """Show user management options."""
     if not is_admin(user.id, settings.admin_list):
@@ -1116,14 +1116,9 @@ async def admin_block_user(callback: CallbackQuery, session: AsyncSession, user:
         # Refresh user info
         target_user = await UserService.get_user_with_location(session, user_id)
         
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🟢 Разблокировать", callback_data=f"admin_unblock_{user_id}")
-        builder.button(text="📜 История покупок", callback_data=f"admin_purchases_{user_id}")
-        builder.button(text="💸 История транзакций", callback_data=f"admin_transactions_{user_id}")
-        builder.button(text="💰 Добавить баланс", callback_data=f"admin_add_balance_{user_id}")
-        builder.button(text="◀️ Назад к списку", callback_data="admin_users_list")
-        builder.adjust(2, 2, 1, 1)
+        # Just call admin_user_actions to refresh
+        await admin_user_actions(callback, session)
+        return
         
         status = "🚫 Заблокирован"
         location = "Не указана"
@@ -1170,17 +1165,9 @@ async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, use
         
         await callback.answer("✅ Пользователь разблокирован!", show_alert=True)
         
-        # Refresh user info
-        target_user = await UserService.get_user_with_location(session, user_id)
-        
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔴 Заблокировать", callback_data=f"admin_block_{user_id}")
-        builder.button(text="📜 История покупок", callback_data=f"admin_purchases_{user_id}")
-        builder.button(text="💸 История транзакций", callback_data=f"admin_transactions_{user_id}")
-        builder.button(text="💰 Добавить баланс", callback_data=f"admin_add_balance_{user_id}")
-        builder.button(text="◀️ Назад к списку", callback_data="admin_users_list")
-        builder.adjust(2, 2, 1, 1)
+        # Just call admin_user_actions to refresh
+        await admin_user_actions(callback, session)
+        return
         
         status = "✅ Активен"
         location = "Не указана"
