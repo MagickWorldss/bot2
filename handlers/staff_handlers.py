@@ -13,6 +13,7 @@ router = Router(name='staff_handlers')
 
 
 @router.message(F.text == "🎁 Стафф")
+@router.message(Command("staff"))
 async def show_staff_shop(message: Message, user: User, session: AsyncSession):
     """Show staff shop."""
     # Get all active items

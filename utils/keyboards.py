@@ -11,36 +11,44 @@ from database.models import Region, City, Image
 
 
 def main_menu_keyboard(language: str = 'ru') -> ReplyKeyboardMarkup:
-    """Main menu keyboard."""
-    from services.language_service import language_service
-    
+    """Main menu keyboard - simplified."""
     builder = ReplyKeyboardBuilder()
-    # Row 1
-    builder.button(text=language_service.get_text(language, 'catalog'))
-    builder.button(text="🛒 Корзина")
-    # Row 2
-    builder.button(text=language_service.get_text(language, 'balance'))
-    builder.button(text="🎁 Стафф")
-    # Row 3
-    builder.button(text=language_service.get_text(language, 'select_region'))
-    builder.button(text="🎁 Реферальная программа")
-    # Row 4
-    builder.button(text="🏆 Достижения")
-    builder.button(text="🎁 Ежедневный бонус")
-    # Row 5
-    builder.button(text="🎯 Квесты")
-    builder.button(text="🧩 Квиз")
-    # Row 6
-    builder.button(text="🎫 Поддержка")
-    builder.button(text=language_service.get_text(language, 'purchase_history'))
-    # Row 7
-    builder.button(text=language_service.get_text(language, 'price_list'))
-    builder.button(text=language_service.get_text(language, 'language'))
-    # Row 8
-    builder.button(text=language_service.get_text(language, 'help'))
     
-    builder.adjust(2, 2, 2, 2, 2, 2, 2, 1)
+    # 4 main buttons
+    builder.button(text="🛍 Каталог")
+    builder.button(text="🎯 Квесты")
+    builder.button(text="👤 Профиль")
+    builder.button(text="ℹ️ Помощь")
+    
+    builder.adjust(2, 2)
     return builder.as_markup(resize_keyboard=True)
+
+
+def quests_menu_keyboard() -> InlineKeyboardMarkup:
+    """Quests submenu keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="🎁 Ежедневный бонус", callback_data="daily_bonus_menu")
+    builder.button(text="🎯 Квесты", callback_data="quests_menu")
+    builder.button(text="🧩 Квиз", callback_data="quiz_menu")
+    builder.button(text="🎰 Колесо фортуны", callback_data="fortune_wheel")
+    
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def profile_menu_keyboard() -> InlineKeyboardMarkup:
+    """Profile submenu keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="💰 Мой баланс", callback_data="my_balance")
+    builder.button(text="🎁 Реферальная программа", callback_data="referral_menu")
+    builder.button(text="🏆 Достижения", callback_data="achievements_menu")
+    builder.button(text="📜 История покупок", callback_data="purchase_history_menu")
+    builder.button(text="🌐 Язык", callback_data="language_menu")
+    
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def admin_menu_keyboard() -> ReplyKeyboardMarkup:
