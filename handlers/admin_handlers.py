@@ -300,67 +300,92 @@ async def add_product_description(
     file_id = data.get('file_id')
     price = data.get('price')
     
+    # Log for debugging
+    logger.info(f"Adding product: region_id={region_id}, city_id={city_id}, district_id={district_id}, price={price}")
+    
     # Debug: check if all data is present
     if not region_id or not city_id or not file_id or not price:
         await message.answer(
             f"❌ Ошибка: отсутствуют данные.\n"
             f"region_id: {region_id}, city_id: {city_id}\n"
+            f"file_id: {file_id}, price: {price}\n"
             f"Попробуйте добавить товар заново.",
             reply_markup=admin_menu_keyboard()
         )
         await state.clear()
         return
     
-    # Download and save image file
-    file = await message.bot.get_file(file_id)
+    # Try-catch для отлова ошибок
+    try:
+        # Download and save image file
+        file = await message.bot.get_file(file_id)
     
-    # Create images directory if not exists
-    os.makedirs('images', exist_ok=True)
+        # Create images directory if not exists
+        os.makedirs('images', exist_ok=True)
+        
+        # Generate unique filename
+        import uuid
+        filename = f"images/{uuid.uuid4()}.jpg"
+        
+        # Download file
+        await message.bot.download_file(file.file_path, filename)
+        
+        # Save to database
+        image = await ImageService.add_image(
+            session=session,
+            file_id=file_id,
+            file_path=filename,
+            price_sol=price,
+            region_id=region_id,
+            city_id=city_id,
+            uploaded_by=user.id,
+            description=description,
+            district_id=district_id
+        )
+        
+        # Log admin action
+        log = AdminLog(
+            admin_id=user.id,
+            action="add_product",
+            details=f"Added product #{image.id}, price: €{price}"
+        )
+        session.add(log)
+        await session.commit()
+        
+        await state.clear()
+        
+        # Load location info
+        await session.refresh(image, ['region', 'city'])
     
-    # Generate unique filename
-    import uuid
-    filename = f"images/{uuid.uuid4()}.jpg"
-    
-    # Download file
-    await message.bot.download_file(file.file_path, filename)
-    
-    # Save to database
-    image = await ImageService.add_image(
-        session=session,
-        file_id=file_id,
-        file_path=filename,
-        price_sol=price,
-        region_id=region_id,
-        city_id=city_id,
-        uploaded_by=user.id,
-        description=description,
-        district_id=district_id
-    )
-    
-    # Log admin action
-    log = AdminLog(
-        admin_id=user.id,
-        action="add_product",
-        details=f"Added product #{image.id}, price: €{price}"
-    )
-    session.add(log)
-    await session.commit()
-    
-    await state.clear()
-    
-    # Load location info
-    await session.refresh(image, ['region', 'city'])
-    
-    await message.answer(
-        f"✅ **Товар успешно добавлен!**\n\n"
-        f"ID: #{image.id}\n"
-        f"Регион: {image.region.name}\n"
-        f"Город: {image.city.name}\n"
-        f"💶 Цена: €{image.price_sol:.2f}\n"
-        f"📝 Описание: {image.description or 'Нет'}",
-        reply_markup=admin_menu_keyboard(),
-        parse_mode="Markdown"
-    )
+        district_info = ""
+        if district_id:
+            from services.district_service import district_service
+            district = await district_service.get_district_by_id(session, district_id)
+            if district:
+                district_info = f"📍 Микрорайон: {district.name}\n"
+        
+        await message.answer(
+            f"✅ **Товар успешно добавлен!**\n\n"
+            f"ID: #{image.id}\n"
+            f"Регион: {image.region.name}\n"
+            f"Город: {image.city.name}\n"
+            f"{district_info}"
+            f"💶 Цена: €{image.price_sol:.2f}\n"
+            f"📝 Описание: {image.description or 'Нет'}",
+            reply_markup=admin_menu_keyboard(),
+            parse_mode="Markdown"
+        )
+        
+        logger.info(f"✅ Product #{image.id} added successfully by user {user.id}")
+        
+    except Exception as e:
+        logger.error(f"Error adding product: {e}", exc_info=True)
+        await message.answer(
+            f"❌ Ошибка при добавлении товара:\n{str(e)}\n\n"
+            f"Попробуйте еще раз.",
+            reply_markup=admin_menu_keyboard()
+        )
+        await state.clear()
 
 
 @router.message(F.text == "📊 Статистика")
