@@ -444,10 +444,78 @@ class StaffPurchase(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class RoulettePrize(Base):
+    """Roulette prizes configuration."""
+    __tablename__ = 'roulette_prizes'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    prize_type: Mapped[str] = mapped_column(String(50))  # eur, points, promocode, nothing
+    prize_value: Mapped[float] = mapped_column(Float)
+    probability: Mapped[float] = mapped_column(Float)  # 0.0 to 1.0
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class UserRouletteSpin(Base):
+    """User roulette spin history."""
+    __tablename__ = 'user_roulette_spins'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'))
+    prize_id: Mapped[int] = mapped_column(Integer, ForeignKey('roulette_prizes.id'))
+    prize_won: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class RealQuestTask(Base):
+    """Real-life quest tasks (20 tasks leading to a physical prize)."""
+    __tablename__ = 'real_quest_tasks'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_number: Mapped[int] = mapped_column(Integer)  # 1 to 20
+    task_text_ru: Mapped[str] = mapped_column(Text)
+    task_text_en: Mapped[str] = mapped_column(Text)
+    correct_code: Mapped[str] = mapped_column(String(255))  # Code to find in real life
+    hint_ru: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    hint_en: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class RealQuestPrize(Base):
+    """Physical prizes for real-life quest."""
+    __tablename__ = 'real_quest_prizes'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    prize_name: Mapped[str] = mapped_column(String(255))
+    prize_description: Mapped[str] = mapped_column(Text)
+    pickup_location: Mapped[str] = mapped_column(Text)  # Where to pick up the prize
+    prize_image_file_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Telegram file_id
+    is_claimed: Mapped[bool] = mapped_column(Boolean, default=False)
+    claimed_by: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey('users.id'), nullable=True)
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class UserRealQuest(Base):
+    """User progress in real-life quest."""
+    __tablename__ = 'user_real_quests'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'), unique=True)
+    current_task: Mapped[int] = mapped_column(Integer, default=1)  # Current task number (1-20)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    prize_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('real_quest_prizes.id'), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
 __all__ = [
     'Base', 'User', 'Region', 'City', 'District', 'Image', 'Transaction', 'Purchase', 
     'AdminLog', 'DepositRequest', 'PriceList', 'Promocode', 'PromocodeUsage', 
     'Cart', 'Achievement', 'UserAchievement', 'Quest', 'UserQuest', 'SupportTicket', 
     'TicketMessage', 'SeasonalEvent', 'Quiz', 'UserQuiz', 'Notification', 
-    'AuctionBid', 'StaffItem', 'StaffPurchase', 'Category'
+    'AuctionBid', 'StaffItem', 'StaffPurchase', 'Category',
+    'RoulettePrize', 'UserRouletteSpin', 'RealQuestTask', 'RealQuestPrize', 'UserRealQuest'
 ]

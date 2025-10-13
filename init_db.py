@@ -150,10 +150,89 @@ async def init_db_data(session):
         await session.commit()
         logger.info("✅ База данных инициализирована: Литва, 10 городов, все микрорайоны")
         
+        # Initialize default quests
+        await init_default_quests(session)
+        
     except Exception as e:
         logger.error(f"Ошибка при инициализации базы данных: {e}")
         await session.rollback()
         raise
+
+
+async def init_default_quests(session: AsyncSession):
+    """Initialize default quests."""
+    from database.models import Quest
+    from datetime import datetime, timedelta
+    
+    # Check if quests already exist
+    stmt = select(Quest)
+    result = await session.execute(stmt)
+    existing = result.scalars().first()
+    
+    if existing:
+        logger.info("Квесты уже существуют, пропускаем инициализацию")
+        return
+    
+    logger.info("Создаю стандартные квесты...")
+    
+    now = datetime.utcnow()
+    
+    # 1. Daily quest
+    daily_quest = Quest(
+        name_ru="Первая покупка дня",
+        name_en="First Purchase of the Day",
+        description_ru="Совершите хотя бы одну покупку сегодня и получите бонус!",
+        description_en="Make at least one purchase today and get a bonus!",
+        quest_type="daily",
+        condition_type="purchases",
+        condition_value=1,
+        reward_type="sol",
+        reward_value=5.0,
+        starts_at=now,
+        ends_at=now + timedelta(days=365),  # Active for a year
+        is_active=True
+    )
+    session.add(daily_quest)
+    logger.info("  ✅ Создан ежедневный квест: Первая покупка дня")
+    
+    # 2. Weekly quest
+    weekly_quest = Quest(
+        name_ru="Активный покупатель",
+        name_en="Active Buyer",
+        description_ru="Совершите 10 покупок за неделю и получите щедрую награду!",
+        description_en="Make 10 purchases in a week and get a generous reward!",
+        quest_type="weekly",
+        condition_type="purchases",
+        condition_value=10,
+        reward_type="sol",
+        reward_value=50.0,
+        starts_at=now,
+        ends_at=now + timedelta(days=365),
+        is_active=True
+    )
+    session.add(weekly_quest)
+    logger.info("  ✅ Создан еженедельный квест: Активный покупатель")
+    
+    # 3. Monthly quest
+    monthly_quest = Quest(
+        name_ru="Большой спендер",
+        name_en="Big Spender",
+        description_ru="Потратьте 500 EUR за месяц и получите 100 баллов достижений!",
+        description_en="Spend 500 EUR in a month and get 100 achievement points!",
+        quest_type="monthly",
+        condition_type="spending",
+        condition_value=500,
+        reward_type="points",
+        reward_value=100.0,
+        starts_at=now,
+        ends_at=now + timedelta(days=365),
+        is_active=True
+    )
+    session.add(monthly_quest)
+    logger.info("  ✅ Создан месячный квест: Большой спендер")
+    
+    await session.commit()
+    logger.info("✅ Стандартные квесты созданы!")
 
 
 async def main():

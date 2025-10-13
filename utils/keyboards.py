@@ -49,7 +49,8 @@ def quests_menu_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🎁 Ежедневный бонус", callback_data="daily_bonus_menu")
     builder.button(text="🎯 Квесты", callback_data="quests_menu")
     builder.button(text="🧩 Квиз", callback_data="quiz_menu")
-    builder.button(text="🎰 Колесо фортуны", callback_data="fortune_wheel")
+    builder.button(text="🎰 Колесо рулетки", callback_data="roulette_spin")
+    builder.button(text="🗺 Квест поиска", callback_data="real_quest_menu")
     
     builder.adjust(1)
     return builder.as_markup()
