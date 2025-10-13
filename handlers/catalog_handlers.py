@@ -188,14 +188,25 @@ async def back_to_catalog(
     
     keyboard = catalog_keyboard(page_images, page=page, total_pages=total_pages)
     
-    await callback.message.edit_text(
-        f"🛍 **Каталог товаров**\n\n"
-        f"Найдено товаров: {len(images)}\n"
-        f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
-        f"Выберите товар для просмотра:",
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    try:
+        await callback.message.edit_text(
+            f"🛍 **Каталог товаров**\n\n"
+            f"Найдено товаров: {len(images)}\n"
+            f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
+            f"Выберите товар для просмотра:",
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    except Exception:
+        # If message can't be edited (e.g., it's a photo), send new message
+        await callback.message.answer(
+            f"🛍 **Каталог товаров**\n\n"
+            f"Найдено товаров: {len(images)}\n"
+            f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
+            f"Выберите товар для просмотра:",
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     await callback.answer()
 
 
