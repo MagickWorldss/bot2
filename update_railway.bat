@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ИСПРАВЛЕНО: убрано file_path из Image + все работает"
+git commit -m "✅ ИСПРАВЛЕНО: убрано file_path и uploaded_by из Image"
 
 echo.
 echo 3. Загрузка на GitHub...
