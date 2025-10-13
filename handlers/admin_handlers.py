@@ -242,7 +242,7 @@ async def add_product_district(message: Message, session: AsyncSession, state: F
         await state.set_state(AddImageStates.waiting_for_category)
         
         # Get categories from database
-        categories = await category_service.get_all_categories(session, active_only=True)
+        categories = await category_service.get_all_categories(session)
         
         if not categories:
             await message.answer(
