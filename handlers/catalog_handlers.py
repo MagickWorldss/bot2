@@ -306,6 +306,30 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
         session, user.id, image.price_sol
     )
     
+    # 5. Update quest progress
+    from services.quest_service import QuestService
+    # Update "purchases" quest (count of purchases)
+    await QuestService.update_quest_progress(
+        session=session,
+        user_id=user.id,
+        condition_type='purchases',
+        value=1  # +1 purchase
+    )
+    # Update "spending" quest (amount spent in EUR)
+    await QuestService.update_quest_progress(
+        session=session,
+        user_id=user.id,
+        condition_type='spending',
+        value=image.price_sol  # Amount spent
+    )
+    # Update "items" quest (count of items bought)
+    await QuestService.update_quest_progress(
+        session=session,
+        user_id=user.id,
+        condition_type='items',
+        value=1  # +1 item
+    )
+    
     # Refresh user
     await session.refresh(user)
     

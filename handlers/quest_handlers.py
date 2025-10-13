@@ -62,12 +62,28 @@ async def show_quests(message: Message, user: User, session: AsyncSession):
         text += f"{status_icon} **{quest.name_ru}**\n"
         text += f"   _{quest.description_ru}_\n"
         text += f"   {progress_text}\n"
-        text += f"   🎁 Награда: {quest.reward_value} {'SOL' if quest.reward_type == 'sol' else 'баллов'}\n\n"
+        
+        # Format reward
+        if quest.reward_type == 'sol':
+            reward_text = f"{quest.reward_value} EUR"
+        elif quest.reward_type == 'points':
+            reward_text = f"{int(quest.reward_value)} баллов"
+        else:
+            reward_text = quest.reward_value
+        
+        text += f"   🎁 Награда: {reward_text}\n\n"
     
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     text += f"📊 Активных: **{active_count}** | Выполнено: **{completed_count}**"
     
-    await message.answer(text, parse_mode="Markdown")
+    # Add buttons for roulette and real quest
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🎰 Колесо рулетки", callback_data="roulette_spin")
+    builder.button(text="🗺 Квест поиска", callback_data="real_quest_menu")
+    builder.adjust(1)
+    
+    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
 
 
 @router.message(F.text == "🎯 Квесты")
