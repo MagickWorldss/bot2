@@ -1225,7 +1225,6 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )
-    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("admin_block_"))
@@ -1630,6 +1629,7 @@ async def set_user_role(callback: CallbackQuery, session: AsyncSession):
         
         # Return to user info
         await admin_user_actions(new_callback, session)
+        await callback.answer("✅ Роль изменена!")
     else:
         await callback.answer("❌ Ошибка при изменении роли", show_alert=True)
 
