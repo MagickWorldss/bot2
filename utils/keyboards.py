@@ -32,6 +32,7 @@ def shop_menu_keyboard(user_role: str = 'user') -> InlineKeyboardMarkup:
     builder.button(text="🛍 Каталог товаров", callback_data="catalog_menu")
     builder.button(text="🎁 Стафф (за баллы)", callback_data="staff_menu")
     builder.button(text="📍 Изменить регион", callback_data="change_region_menu")
+    builder.button(text="🏘 Все районы", callback_data="all_districts_menu")
     
     # Add product management for sellers, moderators, admins
     if user_role in ['seller', 'moderator', 'admin']:

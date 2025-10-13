@@ -31,6 +31,7 @@ class AddImageStates(StatesGroup):
     """States for adding image."""
     waiting_for_region = State()
     waiting_for_city = State()
+    waiting_for_district = State()  # Новый state для микрорайона
     waiting_for_image = State()
     waiting_for_price = State()
     waiting_for_description = State()
@@ -66,11 +67,14 @@ async def is_admin_filter(message: Message, user: User) -> bool:
 @router.message(F.text == "➕ Добавить товар")
 async def add_product_start(message: Message, user: User, session: AsyncSession, state: FSMContext):
     """Start adding product."""
-    # Check role: admin, moderator, seller can add products
+    # Check role: admin (by ADMIN_IDS), moderator, seller can add products
     from services.role_service import role_service
     allowed_roles = ['admin', 'moderator', 'seller']
     
-    if user.role not in allowed_roles:
+    # Also check if user is in ADMIN_IDS (even if role not set)
+    is_admin_user = is_admin(user.id, settings.admin_list)
+    
+    if user.role not in allowed_roles and not is_admin_user:
         await message.answer("⛔️ У вас нет доступа к этой функции.\n\nДобавлять товары могут только продавцы, модераторы и администраторы.")
         return
     
@@ -158,6 +162,60 @@ async def add_product_city(message: Message, session: AsyncSession, state: FSMCo
             return
         
         await state.update_data(city_id=city_id)
+        
+        # Get districts in city
+        from services.district_service import district_service
+        districts = await district_service.get_districts_by_city(session, city_id)
+        
+        if not districts or len(districts) == 0:
+            # No districts - go to image
+            await state.set_state(AddImageStates.waiting_for_image)
+            await message.answer(
+                "🖼 **Отправьте изображение товара:**\n\n"
+                "Это изображение будет продаваться пользователям."
+            )
+            return
+        
+        # Show districts
+        districts_text = f"📍 **Выберите микрорайон в {city.name}:**\n\n"
+        for district in districts[:20]:  # Show first 20
+            districts_text += f"/{district.id} - {district.name}\n"
+        
+        districts_text += f"\n/0 - Все микрорайоны (без привязки)"
+        
+        await state.set_state(AddImageStates.waiting_for_district)
+        await message.answer(districts_text, parse_mode="Markdown")
+        
+    except ValueError:
+        await message.answer("❌ Введите номер города (например: /1)")
+
+
+@router.message(AddImageStates.waiting_for_district)
+async def add_product_district(message: Message, session: AsyncSession, state: FSMContext):
+    """Process district selection."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление товара отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    try:
+        district_id = int(message.text.strip('/'))
+        
+        # 0 means "all districts"
+        if district_id == 0:
+            district_id = None
+        elif district_id > 0:
+            # Verify district exists
+            from services.district_service import district_service
+            district = await district_service.get_district_by_id(session, district_id)
+            if not district:
+                await message.answer("❌ Микрорайон не найден. Попробуйте еще раз.")
+                return
+        
+        await state.update_data(district_id=district_id)
         await state.set_state(AddImageStates.waiting_for_image)
         
         await message.answer(
@@ -166,7 +224,7 @@ async def add_product_city(message: Message, session: AsyncSession, state: FSMCo
         )
         
     except ValueError:
-        await message.answer("❌ Введите номер города (например: /1)")
+        await message.answer("❌ Введите номер микрорайона (например: /1 или /0 для всех)")
 
 
 @router.message(AddImageStates.waiting_for_image, F.photo)
@@ -238,6 +296,7 @@ async def add_product_description(
     data = await state.get_data()
     region_id = data.get('region_id')
     city_id = data.get('city_id')
+    district_id = data.get('district_id')  # Может быть None
     file_id = data.get('file_id')
     price = data.get('price')
     
@@ -274,7 +333,8 @@ async def add_product_description(
         region_id=region_id,
         city_id=city_id,
         uploaded_by=user.id,
-        description=description
+        description=description,
+        district_id=district_id
     )
     
     # Log admin action
@@ -325,7 +385,7 @@ async def show_statistics(message: Message, user: User, session: AsyncSession):
 🖼 Всего товаров: {stats['total_images']}
 ✅ Продано: {stats['sold_images']}
 📦 Доступно: {stats['available_images']}
-💰 Общая выручка: {format_sol_amount(stats['total_revenue'])}
+💶 Общая выручка: €{stats['total_revenue']:.2f}
     """
     
     await message.answer(stats_text, parse_mode="Markdown")

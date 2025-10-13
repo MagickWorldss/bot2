@@ -47,6 +47,130 @@ async def show_shop_menu(message: Message, user: User, session: AsyncSession):
     await message.answer(text, reply_markup=shop_menu_keyboard(user_role=user.role), parse_mode="Markdown")
 
 
+@router.callback_query(F.data == "all_districts_menu")
+async def all_districts_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show all districts with product counts."""
+    from services.district_service import district_service
+    from services.location_service import LocationService
+    from services.image_service import ImageService
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    # Get user's city (if set)
+    if user.city_id:
+        city = await LocationService.get_city_by_id(session, user.city_id)
+        city_name = city.name if city else "вашем городе"
+        districts = await district_service.get_districts_by_city(session, user.city_id, active_only=True)
+    else:
+        # Show all districts from first region
+        regions = await LocationService.get_all_regions(session)
+        if regions:
+            cities = await LocationService.get_cities_by_region(session, regions[0].id)
+            if cities:
+                city_name = "всех городах"
+                # Get districts from all cities
+                all_districts = []
+                for city in cities:
+                    city_districts = await district_service.get_districts_by_city(session, city.id, active_only=True)
+                    all_districts.extend(city_districts)
+                districts = all_districts
+            else:
+                districts = []
+        else:
+            districts = []
+            city_name = ""
+    
+    text = f"🏘 **Все районы в {city_name}:**\n\n"
+    
+    if not districts:
+        text += "📭 Нет доступных районов.\n\nВыберите регион и город сначала."
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        await callback.answer()
+        return
+    
+    # Count products in each district
+    builder = InlineKeyboardBuilder()
+    
+    for district in districts[:30]:  # Show first 30
+        # Count products in this district
+        district_products = await ImageService.get_available_images(
+            session,
+            region_id=user.region_id,
+            city_id=district.city_id,
+            limit=1000
+        )
+        # Filter by district_id
+        count = sum(1 for img in district_products if img.district_id == district.id)
+        
+        text += f"📍 **{district.name}**: {count} товар(ов)\n"
+        
+        if count > 0:
+            builder.button(
+                text=f"📍 {district.name} ({count})",
+                callback_data=f"view_district_{district.id}"
+            )
+    
+    builder.button(text="🔙 Назад к магазину", callback_data="back_to_shop_menu")
+    builder.adjust(2)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("view_district_"))
+async def view_district_products(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show products in specific district."""
+    district_id = int(callback.data.split("_")[2])
+    
+    from services.district_service import district_service
+    from services.image_service import ImageService
+    from utils.keyboards import catalog_keyboard
+    from utils.helpers import paginate_list
+    
+    district = await district_service.get_district_by_id(session, district_id)
+    
+    if not district:
+        await callback.answer("❌ Район не найден", show_alert=True)
+        return
+    
+    # Get products in this district
+    all_products = await ImageService.get_available_images(
+        session,
+        region_id=user.region_id,
+        city_id=district.city_id,
+        limit=1000
+    )
+    # Filter by district_id
+    district_products = [img for img in all_products if img.district_id == district.id]
+    
+    if not district_products:
+        await callback.answer("😔 В этом районе нет товаров", show_alert=True)
+        return
+    
+    # Show products
+    page_size = 5
+    pages = paginate_list(district_products, page_size)
+    current_page = pages[0] if pages else []
+    
+    text = f"🏘 **Район: {district.name}**\n\n"
+    text += f"Найдено товаров: **{len(district_products)}**\n\n"
+    text += "Выберите товар:"
+    
+    keyboard = catalog_keyboard(current_page, page=0, total_pages=len(pages))
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "back_to_shop_menu")
+async def back_to_shop_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Return to shop menu."""
+    await show_shop_menu(callback.message, user, session)
+
+
 @router.callback_query(F.data == "change_region_menu")
 async def change_region_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Change region from shop menu."""

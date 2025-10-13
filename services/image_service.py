@@ -18,7 +18,8 @@ class ImageService:
         region_id: int,
         city_id: int,
         uploaded_by: int,
-        description: Optional[str] = None
+        description: Optional[str] = None,
+        district_id: Optional[int] = None
     ) -> Image:
         """Add new image to database."""
         image = Image(
@@ -27,6 +28,7 @@ class ImageService:
             price_sol=price_sol,
             region_id=region_id,
             city_id=city_id,
+            district_id=district_id,
             uploaded_by=uploaded_by,
             description=description
         )
