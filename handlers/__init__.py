@@ -20,6 +20,7 @@ from handlers import (
     admin_support_handlers,
     user_promocode_handlers,
     seller_handlers,
+    admin_quest_handlers,
 )
 
 
@@ -47,6 +48,7 @@ def setup_routers() -> Router:
     router.include_router(admin_support_handlers.router)
     router.include_router(user_promocode_handlers.router)
     router.include_router(seller_handlers.router)
+    router.include_router(admin_quest_handlers.router)
     
     return router
 

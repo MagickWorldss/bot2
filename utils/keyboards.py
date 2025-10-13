@@ -85,17 +85,20 @@ def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     # Row 3: User management
     builder.button(text="👥 Пользователи")
     
-    # Row 4: Marketing
+    # Row 4: Marketing & Gamification
     builder.button(text="🎫 Промокоды")
     builder.button(text="🎁 Стафф товары")
     
-    # Row 5: Support
+    # Row 5: Quests & Challenges
+    builder.button(text="🎯 Квесты и челленджи")
+    
+    # Row 6: Support
     builder.button(text="🎫 Поддержка")
     
-    # Row 6: Back
+    # Row 7: Back
     builder.button(text="🔙 Главное меню")
     
-    builder.adjust(2, 1, 1, 2, 1, 1)
+    builder.adjust(2, 2, 1, 2, 1, 1, 1)
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -391,6 +394,56 @@ def admin_city_management_keyboard(
     )
     
     builder.adjust(2)
+    return builder.as_markup()
+
+
+def admin_quest_management_keyboard() -> InlineKeyboardMarkup:
+    """Admin quest management keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="➕ Создать квест", callback_data="admin_add_quest")
+    builder.button(text="📋 Список квестов", callback_data="admin_list_quests")
+    builder.button(text="🔙 Назад в админку", callback_data="back_to_admin")
+    
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_quests_list_keyboard(quests) -> InlineKeyboardMarkup:
+    """Keyboard with list of quests for editing."""
+    builder = InlineKeyboardBuilder()
+    
+    for quest in quests:
+        status = "✅" if quest.is_active else "❌"
+        builder.button(
+            text=f"{status} {quest.name_ru}",
+            callback_data=f"admin_quest_{quest.id}"
+        )
+    
+    builder.button(text="🔙 Назад", callback_data="admin_quests_menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_quest_actions_keyboard(quest_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """Actions for specific quest."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="✏️ Название", callback_data=f"admin_edit_quest_name_{quest_id}")
+    builder.button(text="📝 Описание", callback_data=f"admin_edit_quest_desc_{quest_id}")
+    builder.button(text="🎯 Условие", callback_data=f"admin_edit_quest_cond_{quest_id}")
+    builder.button(text="🎁 Награда", callback_data=f"admin_edit_quest_reward_{quest_id}")
+    builder.button(text="📅 Даты", callback_data=f"admin_edit_quest_dates_{quest_id}")
+    
+    if is_active:
+        builder.button(text="🔴 Деактивировать", callback_data=f"admin_deactivate_quest_{quest_id}")
+    else:
+        builder.button(text="🟢 Активировать", callback_data=f"admin_activate_quest_{quest_id}")
+    
+    builder.button(text="🗑 Удалить", callback_data=f"admin_delete_quest_{quest_id}")
+    builder.button(text="🔙 Назад", callback_data="admin_list_quests")
+    
+    builder.adjust(2, 2, 1, 1, 1, 1)
     return builder.as_markup()
 
 
