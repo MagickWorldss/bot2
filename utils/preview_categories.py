@@ -81,8 +81,25 @@ def format_category_display(category_key: str) -> str:
     category = get_category_info(category_key)
     return f"{category['icon']} {category['name']}"
 
+def get_category_keyboard_from_db(categories):
+    """Get keyboard for category selection from database."""
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    builder = InlineKeyboardBuilder()
+    
+    for category in categories:
+        builder.button(
+            text=f"{category.icon} {category.name}",
+            callback_data=f"category_{category.key}"
+        )
+    
+    builder.button(text="❌ Отмена", callback_data="cancel_add_product")
+    builder.adjust(2)  # 2 columns
+    return builder.as_markup()
+
+
 def get_category_keyboard():
-    """Get keyboard for category selection."""
+    """Get keyboard for category selection (legacy - uses static data)."""
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     
     builder = InlineKeyboardBuilder()

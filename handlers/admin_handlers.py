@@ -24,7 +24,7 @@ from utils.keyboards import (
     cancel_inline_keyboard,
     admin_menu_keyboard
 )
-from utils.preview_categories import get_category_keyboard, get_category_info, format_category_display
+from utils.preview_categories import get_category_keyboard, get_category_keyboard_from_db, get_category_info, format_category_display
 from utils.helpers import format_sol_amount, is_admin
 from config import settings
 
@@ -241,9 +241,19 @@ async def add_product_district(message: Message, session: AsyncSession, state: F
         await state.update_data(district_id=district_id)
         await state.set_state(AddImageStates.waiting_for_category)
         
+        # Get categories from database
+        categories = await category_service.get_all_categories(session, active_only=True)
+        
+        if not categories:
+            await message.answer(
+                "❌ Категории не найдены. Сначала создайте категории в админке.",
+                reply_markup=admin_menu_keyboard()
+            )
+            return
+        
         await message.answer(
             "📂 Выберите категорию товара:",
-            reply_markup=get_category_keyboard()
+            reply_markup=get_category_keyboard_from_db(categories)
         )
         
     except ValueError:
@@ -255,7 +265,9 @@ async def cancel_add_product(callback: CallbackQuery, state: FSMContext):
     """Cancel product addition."""
     await state.clear()
     await callback.message.edit_text(
-        "❌ Добавление товара отменено."
+        "❌ Добавление товара отменено.\n\n"
+        "Выберите действие:",
+        reply_markup=admin_menu_keyboard()
     )
     await callback.answer("❌ Отменено")
 
