@@ -265,7 +265,9 @@ async def cancel_add_product(callback: CallbackQuery, state: FSMContext):
     """Cancel product addition."""
     await state.clear()
     await callback.message.edit_text(
-        "❌ Добавление товара отменено.\n\n"
+        "❌ Добавление товара отменено."
+    )
+    await callback.message.answer(
         "Выберите действие:",
         reply_markup=admin_menu_keyboard()
     )
