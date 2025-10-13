@@ -126,6 +126,10 @@ class Image(Base):
     stock_count: Mapped[int] = mapped_column(Integer, default=1)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
     
+    # Preview system
+    preview_file_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

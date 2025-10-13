@@ -19,6 +19,7 @@ from utils.keyboards import (
     cancel_keyboard,
     admin_menu_keyboard
 )
+from utils.preview_categories import get_category_keyboard, get_category_info, format_category_display
 from utils.helpers import format_sol_amount, is_admin
 from config import settings
 
@@ -32,7 +33,9 @@ class AddImageStates(StatesGroup):
     waiting_for_region = State()
     waiting_for_city = State()
     waiting_for_district = State()  # Новый state для микрорайона
-    waiting_for_image = State()
+    waiting_for_category = State()  # Выбор категории
+    waiting_for_preview = State()  # Загрузка превью-изображения
+    waiting_for_image = State()    # Загрузка основной картинки
     waiting_for_price = State()
     waiting_for_description = State()
 
@@ -216,15 +219,59 @@ async def add_product_district(message: Message, session: AsyncSession, state: F
                 return
         
         await state.update_data(district_id=district_id)
-        await state.set_state(AddImageStates.waiting_for_image)
+        await state.set_state(AddImageStates.waiting_for_category)
         
         await message.answer(
-            "🖼 **Отправьте изображение товара:**\n\n"
-            "Это изображение будет продаваться пользователям."
+            "📂 Выберите категорию товара:",
+            reply_markup=get_category_keyboard()
         )
         
     except ValueError:
         await message.answer("❌ Введите номер микрорайона (например: /1 или /0 для всех)")
+
+
+@router.callback_query(F.data.startswith("category_"))
+async def add_product_category(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
+    """Process category selection."""
+    category_key = callback.data.split("_")[1]
+    category_info = get_category_info(category_key)
+    
+    await state.update_data(category=category_key)
+    await state.set_state(AddImageStates.waiting_for_preview)
+    
+    await callback.message.edit_text(
+        f"📂 Категория: {format_category_display(category_key)}\n\n"
+        f"🖼 **Отправьте превью-изображение:**\n\n"
+        f"Это изображение будет показано в каталоге как превью товара.\n"
+        f"Рекомендуется использовать тематическую иконку или символ категории."
+    )
+    await callback.answer()
+
+
+@router.message(AddImageStates.waiting_for_preview)
+async def add_product_preview(message: Message, session: AsyncSession, state: FSMContext):
+    """Process preview image upload."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление товара отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    if not message.photo:
+        await message.answer("❌ Пожалуйста, отправьте изображение для превью.")
+        return
+    
+    # Save preview file_id
+    preview_file_id = message.photo[-1].file_id
+    await state.update_data(preview_file_id=preview_file_id)
+    await state.set_state(AddImageStates.waiting_for_image)
+    
+    await message.answer(
+        "🖼 **Отправьте основное изображение товара:**\n\n"
+        "Это изображение будет показано покупателю после оплаты."
+    )
 
 
 @router.message(AddImageStates.waiting_for_image, F.photo)
@@ -340,7 +387,9 @@ async def add_product_description(
             city_id=city_id,
             uploaded_by=user.id,
             description=description,
-            district_id=district_id
+            district_id=district_id,
+            preview_file_id=data.get('preview_file_id'),
+            category=data.get('category')
         )
         
         # Log admin action
@@ -368,6 +417,7 @@ async def add_product_description(
         await message.answer(
             f"✅ **Товар успешно добавлен!**\n\n"
             f"ID: #{image.id}\n"
+            f"📂 Категория: {format_category_display(image.category) if image.category else 'Не указана'}\n"
             f"Регион: {region.name if region else 'N/A'}\n"
             f"Город: {city.name if city else 'N/A'}\n"
             f"{district_info}"

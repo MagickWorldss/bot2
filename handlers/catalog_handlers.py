@@ -10,6 +10,7 @@ from services.transaction_service import TransactionService
 from services.location_service import LocationService
 from utils.keyboards import catalog_keyboard, image_view_keyboard, confirm_purchase_keyboard
 from utils.helpers import format_sol_amount, paginate_list
+from utils.preview_categories import format_category_display
 
 
 router = Router(name='catalog_handlers')
@@ -118,6 +119,7 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
     description = f"""
 🖼 **Товар #{image.id}**
 
+📂 Категория: {format_category_display(image.category) if image.category else 'Не указана'}
 📍 Регион: {region_name}
 🏙 Город: {city_name}
 
@@ -130,12 +132,16 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
     
     keyboard = image_view_keyboard(image_id, image.price_sol)
     
-    # Try to send the image
+    # Try to send the preview image (or main image if no preview)
     try:
         await callback.message.delete()
+        
+        # Use preview if available, otherwise use main image
+        photo_to_send = image.preview_file_id if image.preview_file_id else image.file_id
+        
         await callback.bot.send_photo(
             chat_id=callback.message.chat.id,
-            photo=image.file_id,
+            photo=photo_to_send,
             caption=description,
             reply_markup=keyboard,
             parse_mode="Markdown"
@@ -300,6 +306,7 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
             photo=image.file_id,
             caption=f"✅ **Покупка успешна!**\n\n"
             f"Товар: #{image.id}\n"
+            f"📂 Категория: {format_category_display(image.category) if image.category else 'Не указана'}\n"
             f"💶 Оплачено: €{image.price_sol:.2f}\n"
             f"💰 Остаток баланса: €{user.balance_sol:.2f}\n\n"
             f"Спасибо за покупку! 🎉",

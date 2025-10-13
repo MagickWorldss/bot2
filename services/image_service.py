@@ -19,18 +19,22 @@ class ImageService:
         city_id: int,
         uploaded_by: int,
         description: Optional[str] = None,
-        district_id: Optional[int] = None
+        district_id: Optional[int] = None,
+        preview_file_id: Optional[str] = None,
+        category: Optional[str] = None
     ) -> Image:
         """Add new image to database."""
         # Note: file_path and uploaded_by are not in Image model
-        # Image model only has: file_id, price_sol, region_id, city_id, district_id, description
+        # Image model only has: file_id, price_sol, region_id, city_id, district_id, description, preview_file_id, category
         image = Image(
             file_id=file_id,
             price_sol=price_sol,
             region_id=region_id,
             city_id=city_id,
             district_id=district_id,
-            description=description
+            description=description,
+            preview_file_id=preview_file_id,
+            category=category
         )
         session.add(image)
         await session.commit()
