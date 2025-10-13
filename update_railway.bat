@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ФИНАЛ: ВСЕ relationships заменены на LocationService"
+git commit -m "✅ ФИНАЛ: catalog + pagination + EUR + ВСЁ РАБОТАЕТ"
 
 echo.
 echo 3. Загрузка на GitHub...

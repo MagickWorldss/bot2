@@ -167,7 +167,7 @@ def catalog_keyboard(
     
     for image in images:
         builder.button(
-            text=f"🖼 Товар #{image.id} - {image.price_sol} SOL",
+            text=f"🖼 Товар #{image.id} - €{image.price_sol:.2f}",
             callback_data=f"view_image_{image.id}"
         )
     
@@ -201,7 +201,7 @@ def image_view_keyboard(image_id: int, price: float) -> InlineKeyboardMarkup:
     """Inline keyboard for viewing image."""
     builder = InlineKeyboardBuilder()
     builder.button(
-        text=f"💳 Купить за {price} SOL",
+        text=f"💳 Купить за €{price:.2f}",
         callback_data=f"buy_image_{image_id}"
     )
     builder.button(

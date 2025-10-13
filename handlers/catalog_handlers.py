@@ -107,14 +107,19 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
         )
         return
     
-    # Load location info
-    await session.refresh(image, ['region', 'city'])
+    # Load location manually (no relationships)
+    from services.location_service import LocationService
+    region = await LocationService.get_region_by_id(session, image.region_id)
+    city = await LocationService.get_city_by_id(session, image.city_id)
+    
+    region_name = region.name if region else 'N/A'
+    city_name = city.name if city else 'N/A'
     
     description = f"""
 🖼 **Товар #{image.id}**
 
-📍 Регион: {image.region.name}
-🏙 Город: {image.city.name}
+📍 Регион: {region_name}
+🏙 Город: {city_name}
 
 💶 Цена: €{image.price_sol:.2f}
 💰 Ваш баланс: €{user.balance_sol:.2f}

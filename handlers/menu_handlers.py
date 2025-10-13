@@ -152,14 +152,13 @@ async def view_district_products(callback: CallbackQuery, user: User, session: A
     
     # Show products
     page_size = 5
-    pages = paginate_list(district_products, page_size)
-    current_page = pages[0] if pages else []
+    current_page, total_pages = paginate_list(district_products, 0, page_size)
     
     text = f"🏘 **Район: {district.name}**\n\n"
     text += f"Найдено товаров: **{len(district_products)}**\n\n"
     text += "Выберите товар:"
     
-    keyboard = catalog_keyboard(current_page, page=0, total_pages=len(pages))
+    keyboard = catalog_keyboard(current_page, page=0, total_pages=total_pages)
     
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
     await callback.answer()
@@ -230,8 +229,7 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     from utils.helpers import paginate_list
     
     page_size = 5
-    pages = paginate_list(images, page_size)
-    current_page = pages[0] if pages else []
+    current_page, total_pages = paginate_list(images, 0, page_size)
     
     # Load location manually (no relationships in User model)
     region_name = "не указан"
@@ -249,7 +247,7 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     catalog_text += f"Найдено товаров: **{len(images)}**\n\n"
     catalog_text += "Выберите товар для просмотра:"
     
-    keyboard = catalog_keyboard(current_page, page=0, total_pages=len(pages))
+    keyboard = catalog_keyboard(current_page, page=0, total_pages=total_pages)
     
     await callback.message.edit_text(
         catalog_text,
