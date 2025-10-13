@@ -76,11 +76,12 @@ async def show_quests(message: Message, user: User, session: AsyncSession):
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     text += f"📊 Активных: **{active_count}** | Выполнено: **{completed_count}**"
     
-    # Add buttons for roulette and real quest
+    # Add buttons for roulette, real quest, and daily bonus
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
     builder.button(text="🎰 Колесо рулетки", callback_data="roulette_spin")
     builder.button(text="🗺 Квест поиска", callback_data="real_quest_menu")
+    builder.button(text="🎁 Ежедневный бонус", callback_data="daily_bonus_menu")
     builder.adjust(1)
     
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")

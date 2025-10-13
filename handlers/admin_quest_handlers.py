@@ -79,30 +79,61 @@ async def admin_quests_menu_callback(callback: CallbackQuery, user: User, sessio
         await callback.answer("❌ Доступ запрещен")
         return
     
-    # Create extended keyboard with roulette and real quest
+    # Create extended keyboard with all quest features
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
-    builder.button(text="➕ Создать квест", callback_data="admin_add_quest")
-    builder.button(text="📋 Список квестов", callback_data="admin_list_quests")
-    builder.button(text="🎰 Управление рулеткой", callback_data="admin_roulette_menu")
+    builder.button(text="📋 Квесты", callback_data="admin_quests_submenu")
+    builder.button(text="🎰 Рулетка", callback_data="admin_roulette_menu")
     builder.button(text="🗺 Квест поиска", callback_data="admin_real_quest_menu")
+    builder.button(text="🎁 Ежедневный бонус", callback_data="admin_daily_bonus_menu")
     builder.button(text="🔙 Назад в админку", callback_data="back_to_admin")
     builder.adjust(2, 2, 1)
     
     await callback.message.edit_text(
         "🎯 **Управление квестами и челленджами**\n\n"
-        "Здесь вы можете создавать и управлять всеми игровыми элементами.\n\n"
+        "Полное управление всеми игровыми элементами.\n\n"
         "**📋 Квесты:**\n"
-        "• Ежедневные, еженедельные, месячные\n"
+        "• Создание и редактирование квестов\n"
         "• Условия: покупки, траты, товары\n"
         "• Награды: EUR, баллы, промокоды\n\n"
         "**🎰 Рулетка:**\n"
-        "• Настройка призов\n"
-        "• Управление вероятностями\n\n"
+        "• Настройка призов и вероятностей\n"
+        "• Управление активностью\n\n"
         "**🗺 Квест поиска:**\n"
         "• 20 заданий в реальной жизни\n"
         "• Физические призы\n"
-        "• Управление участниками",
+        "• Статистика участников\n\n"
+        "**🎁 Ежедневный бонус:**\n"
+        "• Настройка размера бонуса\n"
+        "• Управление условиями",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_quests_submenu")
+async def admin_quests_submenu(callback: CallbackQuery, user: User):
+    """Show quests submenu."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен")
+        return
+    
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    builder.button(text="➕ Создать квест", callback_data="admin_add_quest")
+    builder.button(text="📋 Список квестов", callback_data="admin_list_quests")
+    builder.button(text="🔙 Назад", callback_data="admin_quests_menu")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        "📋 **Управление квестами**\n\n"
+        "Создавайте и редактируйте квесты для пользователей.\n\n"
+        "**Типы квестов:**\n"
+        "• Ежедневные - обновляются каждый день\n"
+        "• Еженедельные - обновляются каждую неделю\n"
+        "• Месячные - обновляются каждый месяц\n"
+        "• Специальные - разовые события",
         reply_markup=builder.as_markup(),
         parse_mode="Markdown"
     )

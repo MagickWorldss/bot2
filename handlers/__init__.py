@@ -25,6 +25,7 @@ from handlers import (
     admin_roulette_handlers,
     real_quest_handlers,
     admin_real_quest_handlers,
+    admin_daily_bonus_handlers,
 )
 
 
@@ -57,6 +58,7 @@ def setup_routers() -> Router:
     router.include_router(admin_roulette_handlers.router)
     router.include_router(real_quest_handlers.router)
     router.include_router(admin_real_quest_handlers.router)
+    router.include_router(admin_daily_bonus_handlers.router)
     
     return router
 
