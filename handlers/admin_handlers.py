@@ -1997,3 +1997,195 @@ async def admin_init_categories(callback: CallbackQuery, user: User, session: As
         logger.error(f"Error initializing categories: {e}", exc_info=True)
         await callback.answer("❌ Ошибка при инициализации категорий.", show_alert=True)
 
+
+# ==================== CATEGORY EDIT/DELETE HANDLERS ====================
+
+@router.callback_query(F.data.startswith("admin_edit_category_"))
+async def admin_edit_category_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    await state.update_data(category_id=category_id)
+    await state.set_state(EditCategoryStates.waiting_for_name)
+    
+    await callback.message.edit_text(
+        f"✏️ **Редактирование категории: {category.name}**\n\n"
+        f"Текущее название: `{category.name}`\n\n"
+        f"Введите новое название (или оставьте текущее):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditCategoryStates.waiting_for_name)
+async def admin_edit_category_name(message: Message, state: FSMContext):
+    """Process category name edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    name = message.text.strip()
+    await state.update_data(name=name)
+    await state.set_state(EditCategoryStates.waiting_for_icon)
+    
+    await message.answer(
+        f"✏️ Новое название: `{name}`\n\n"
+        f"Введите новую иконку (или оставьте текущую):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.message(EditCategoryStates.waiting_for_icon)
+async def admin_edit_category_icon(message: Message, state: FSMContext):
+    """Process category icon edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    icon = message.text.strip()
+    await state.update_data(icon=icon)
+    await state.set_state(EditCategoryStates.waiting_for_description)
+    
+    await message.answer(
+        f"✏️ Новая иконка: {icon}\n\n"
+        f"Введите новое описание (или оставьте текущее):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.message(EditCategoryStates.waiting_for_description)
+async def admin_edit_category_description(message: Message, state: FSMContext, session: AsyncSession):
+    """Process category description edit and save changes."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    description = message.text.strip()
+    data = await state.get_data()
+    
+    try:
+        # Update category
+        updated_category = await category_service.update_category(
+            session=session,
+            category_id=data['category_id'],
+            name=data['name'],
+            icon=data['icon'],
+            description=description
+        )
+        
+        if updated_category:
+            await state.clear()
+            
+            await message.answer(
+                f"✅ **Категория успешно обновлена!**\n\n"
+                f"ID: #{updated_category.id}\n"
+                f"Название: {updated_category.name}\n"
+                f"Иконка: {updated_category.icon}\n"
+                f"Описание: {updated_category.description}",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=message.from_user.id,
+                action="edit_category",
+                details=f"Edited category {updated_category.key}: {updated_category.name}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await message.answer(
+                "❌ Ошибка при обновлении категории.",
+                reply_markup=admin_menu_keyboard()
+            )
+            
+    except Exception as e:
+        logger.error(f"Error editing category: {e}", exc_info=True)
+        await message.answer(
+            "❌ Ошибка при редактировании категории.",
+            reply_markup=admin_menu_keyboard()
+        )
+
+
+@router.callback_query(F.data.startswith("admin_delete_category_"))
+async def admin_delete_category(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Delete category."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    try:
+        # Check if category is used by any products
+        from services.image_service import ImageService
+        products_with_category = await ImageService.get_images_by_category(session, category.key)
+        
+        if products_with_category:
+            await callback.message.edit_text(
+                f"❌ **Нельзя удалить категорию!**\n\n"
+                f"Категория `{category.name}` используется в {len(products_with_category)} товарах.\n\n"
+                f"Сначала удалите или измените категорию у всех товаров.",
+                reply_markup=admin_category_actions_keyboard(category_id),
+                parse_mode="Markdown"
+            )
+            await callback.answer("❌ Категория используется в товарах!")
+            return
+        
+        # Delete category
+        success = await category_service.delete_category(session, category_id)
+        
+        if success:
+            await callback.message.edit_text(
+                f"✅ **Категория удалена!**\n\n"
+                f"Удалена категория: `{category.name}`",
+                reply_markup=admin_category_management_keyboard(),
+                parse_mode="Markdown"
+            )
+            await callback.answer("✅ Категория удалена!")
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=user.id,
+                action="delete_category",
+                details=f"Deleted category {category.key}: {category.name}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await callback.answer("❌ Ошибка при удалении категории.", show_alert=True)
+            
+    except Exception as e:
+        logger.error(f"Error deleting category: {e}", exc_info=True)
+        await callback.answer("❌ Ошибка при удалении категории.", show_alert=True)
+

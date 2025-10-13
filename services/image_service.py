@@ -118,6 +118,13 @@ class ImageService:
         return True
     
     @staticmethod
+    async def get_images_by_category(session: AsyncSession, category_key: str) -> List[Image]:
+        """Get all images by category key."""
+        stmt = select(Image).where(Image.category == category_key)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+    
+    @staticmethod
     async def get_user_purchases(
         session: AsyncSession,
         user_id: int,
