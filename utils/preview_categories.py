@@ -93,5 +93,6 @@ def get_category_keyboard():
             callback_data=f"category_{key}"
         )
     
+    builder.button(text="❌ Отмена", callback_data="cancel_add_product")
     builder.adjust(2)  # 2 columns
     return builder.as_markup()

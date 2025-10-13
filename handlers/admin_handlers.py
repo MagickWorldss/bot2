@@ -12,10 +12,14 @@ from services.image_service import ImageService
 from services.location_service import LocationService
 from services.user_service import UserService
 from services.transaction_service import TransactionService
+from services.category_service import category_service
 from utils.keyboards import (
     admin_region_management_keyboard,
     admin_region_actions_keyboard,
     admin_city_management_keyboard,
+    admin_category_management_keyboard,
+    admin_categories_list_keyboard,
+    admin_category_actions_keyboard,
     cancel_keyboard,
     admin_menu_keyboard
 )
@@ -44,6 +48,21 @@ class AddRegionStates(StatesGroup):
     """States for adding region."""
     waiting_for_name = State()
     waiting_for_code = State()
+
+
+class AddCategoryStates(StatesGroup):
+    """States for adding category."""
+    waiting_for_key = State()
+    waiting_for_name = State()
+    waiting_for_icon = State()
+    waiting_for_description = State()
+
+
+class EditCategoryStates(StatesGroup):
+    """States for editing category."""
+    waiting_for_name = State()
+    waiting_for_icon = State()
+    waiting_for_description = State()
 
 
 class AddCityStates(StatesGroup):
@@ -230,6 +249,17 @@ async def add_product_district(message: Message, session: AsyncSession, state: F
         await message.answer("❌ Введите номер микрорайона (например: /1 или /0 для всех)")
 
 
+@router.callback_query(F.data == "cancel_add_product")
+async def cancel_add_product(callback: CallbackQuery, state: FSMContext):
+    """Cancel product addition."""
+    await state.clear()
+    await callback.message.edit_text(
+        "❌ Добавление товара отменено.",
+        reply_markup=admin_menu_keyboard()
+    )
+    await callback.answer("❌ Отменено")
+
+
 @router.callback_query(F.data.startswith("category_"))
 async def add_product_category(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
     """Process category selection."""
@@ -243,7 +273,8 @@ async def add_product_category(callback: CallbackQuery, session: AsyncSession, s
         f"📂 Категория: {format_category_display(category_key)}\n\n"
         f"🖼 **Отправьте превью-изображение:**\n\n"
         f"Это изображение будет показано в каталоге как превью товара.\n"
-        f"Рекомендуется использовать тематическую иконку или символ категории."
+        f"Рекомендуется использовать тематическую иконку или символ категории.",
+        reply_markup=cancel_keyboard()
     )
     await callback.answer()
 
@@ -270,7 +301,8 @@ async def add_product_preview(message: Message, session: AsyncSession, state: FS
     
     await message.answer(
         "🖼 **Отправьте основное изображение товара:**\n\n"
-        "Это изображение будет показано покупателю после оплаты."
+        "Это изображение будет показано покупателю после оплаты.",
+        reply_markup=cancel_keyboard()
     )
 
 
@@ -1682,4 +1714,286 @@ async def set_user_role(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("✅ Роль изменена!")
     else:
         await callback.answer("❌ Ошибка при изменении роли", show_alert=True)
+
+
+# ==================== CATEGORY MANAGEMENT ====================
+
+@router.message(F.text == "📂 Категории товаров")
+async def admin_categories_menu(message: Message, user: User):
+    """Show category management menu."""
+    if not is_admin(user.id):
+        await message.answer("⛔️ Нет доступа")
+        return
+    
+    await message.answer(
+        "📂 **Управление категориями товаров**\n\n"
+        "Выберите действие:",
+        reply_markup=admin_category_management_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "admin_categories_menu")
+async def admin_categories_menu_callback(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show category management menu."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    await callback.message.edit_text(
+        "📂 **Управление категориями товаров**\n\n"
+        "Выберите действие:",
+        reply_markup=admin_category_management_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_add_category")
+async def admin_add_category_start(callback: CallbackQuery, user: User, state: FSMContext):
+    """Start adding category."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    await state.set_state(AddCategoryStates.waiting_for_key)
+    await callback.message.edit_text(
+        "📂 **Добавление новой категории**\n\n"
+        "Введите ключ категории (например: winter, pharmacy, summer):\n\n"
+        "⚠️ Ключ должен быть уникальным и содержать только латинские буквы.",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(AddCategoryStates.waiting_for_key)
+async def admin_add_category_key(message: Message, state: FSMContext):
+    """Process category key."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление категории отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    key = message.text.strip().lower()
+    
+    # Validate key
+    if not key.replace('_', '').isalnum():
+        await message.answer("❌ Ключ должен содержать только латинские буквы, цифры и подчеркивания.")
+        return
+    
+    await state.update_data(key=key)
+    await state.set_state(AddCategoryStates.waiting_for_name)
+    
+    await message.answer(
+        f"📂 Ключ: `{key}`\n\n"
+        f"Введите название категории (например: ❄️ Зима):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.message(AddCategoryStates.waiting_for_name)
+async def admin_add_category_name(message: Message, state: FSMContext):
+    """Process category name."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление категории отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    name = message.text.strip()
+    await state.update_data(name=name)
+    await state.set_state(AddCategoryStates.waiting_for_icon)
+    
+    await message.answer(
+        f"📂 Ключ: `{name}`\n\n"
+        f"Введите иконку категории (например: ❄️):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.message(AddCategoryStates.waiting_for_icon)
+async def admin_add_category_icon(message: Message, state: FSMContext):
+    """Process category icon."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление категории отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    icon = message.text.strip()
+    await state.update_data(icon=icon)
+    await state.set_state(AddCategoryStates.waiting_for_description)
+    
+    await message.answer(
+        f"📂 Иконка: {icon}\n\n"
+        f"Введите описание категории (например: Зимние пейзажи, снег, мороз):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.message(AddCategoryStates.waiting_for_description)
+async def admin_add_category_description(message: Message, state: FSMContext, session: AsyncSession):
+    """Process category description and create category."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Добавление категории отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    description = message.text.strip()
+    data = await state.get_data()
+    
+    try:
+        # Check if key already exists
+        existing = await category_service.get_category_by_key(session, data['key'])
+        if existing:
+            await message.answer(f"❌ Категория с ключом `{data['key']}` уже существует.")
+            return
+        
+        # Create category
+        category = await category_service.create_category(
+            session=session,
+            key=data['key'],
+            name=data['name'],
+            icon=data['icon'],
+            description=description
+        )
+        
+        await state.clear()
+        
+        await message.answer(
+            f"✅ **Категория успешно добавлена!**\n\n"
+            f"ID: #{category.id}\n"
+            f"Ключ: `{category.key}`\n"
+            f"Название: {category.name}\n"
+            f"Иконка: {category.icon}\n"
+            f"Описание: {category.description}",
+            reply_markup=admin_menu_keyboard(),
+            parse_mode="Markdown"
+        )
+        
+        # Log admin action
+        log = AdminLog(
+            admin_id=message.from_user.id,
+            action="add_category",
+            details=f"Added category {category.key}: {category.name}"
+        )
+        session.add(log)
+        await session.commit()
+        
+    except Exception as e:
+        logger.error(f"Error adding category: {e}", exc_info=True)
+        await message.answer(
+            "❌ Ошибка при добавлении категории.",
+            reply_markup=admin_menu_keyboard()
+        )
+
+
+@router.callback_query(F.data == "admin_edit_categories")
+async def admin_edit_categories_list(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show categories list for editing."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    categories = await category_service.get_all_categories(session)
+    
+    if not categories:
+        await callback.message.edit_text(
+            "📂 **Категории товаров**\n\n"
+            "Категории не найдены.",
+            reply_markup=admin_category_management_keyboard(),
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+        return
+    
+    text = "📂 **Редактирование категорий**\n\n"
+    for category in categories:
+        status = "✅" if category.is_active else "❌"
+        text += f"{status} **{category.name}** (`{category.key}`)\n"
+        text += f"   {category.description or 'Нет описания'}\n\n"
+    
+    await callback.message.edit_text(
+        text,
+        reply_markup=admin_categories_list_keyboard(categories),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin_category_"))
+async def admin_category_actions(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Show category actions."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[2])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    status = "✅ Активна" if category.is_active else "❌ Неактивна"
+    
+    await callback.message.edit_text(
+        f"📂 **Категория: {category.name}**\n\n"
+        f"ID: #{category.id}\n"
+        f"Ключ: `{category.key}`\n"
+        f"Иконка: {category.icon}\n"
+        f"Описание: {category.description or 'Нет описания'}\n"
+        f"Статус: {status}\n"
+        f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Выберите действие:",
+        reply_markup=admin_category_actions_keyboard(category_id),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_init_categories")
+async def admin_init_categories(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Initialize default categories."""
+    if not is_admin(user.id):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    try:
+        await category_service.initialize_default_categories(session)
+        
+        await callback.message.edit_text(
+            "✅ **Категории инициализированы!**\n\n"
+            "Все стандартные категории добавлены в базу данных.",
+            reply_markup=admin_category_management_keyboard(),
+            parse_mode="Markdown"
+        )
+        await callback.answer("✅ Категории инициализированы!")
+        
+        # Log admin action
+        log = AdminLog(
+            admin_id=user.id,
+            action="init_categories",
+            details="Initialized default categories"
+        )
+        session.add(log)
+        await session.commit()
+        
+    except Exception as e:
+        logger.error(f"Error initializing categories: {e}", exc_info=True)
+        await callback.answer("❌ Ошибка при инициализации категорий.", show_alert=True)
 

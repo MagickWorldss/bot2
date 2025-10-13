@@ -80,6 +80,7 @@ def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     
     # Row 2: Location management
     builder.button(text="🗂 Регионы и города")
+    builder.button(text="📂 Категории товаров")
     
     # Row 3: User management
     builder.button(text="👥 Пользователи")
@@ -96,6 +97,47 @@ def admin_menu_keyboard() -> ReplyKeyboardMarkup:
     
     builder.adjust(2, 1, 1, 2, 1, 1)
     return builder.as_markup(resize_keyboard=True)
+
+
+def admin_category_management_keyboard() -> InlineKeyboardMarkup:
+    """Admin category management keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="➕ Добавить категорию", callback_data="admin_add_category")
+    builder.button(text="📝 Редактировать категории", callback_data="admin_edit_categories")
+    builder.button(text="🔄 Инициализировать категории", callback_data="admin_init_categories")
+    builder.button(text="🔙 Назад", callback_data="admin_back_to_menu")
+    
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_categories_list_keyboard(categories: List) -> InlineKeyboardMarkup:
+    """Admin categories list keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    for category in categories:
+        status = "✅" if category.is_active else "❌"
+        builder.button(
+            text=f"{status} {category.icon} {category.name}",
+            callback_data=f"admin_category_{category.id}"
+        )
+    
+    builder.button(text="🔙 Назад", callback_data="admin_categories_menu")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_category_actions_keyboard(category_id: int) -> InlineKeyboardMarkup:
+    """Admin category actions keyboard."""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="✏️ Редактировать", callback_data=f"admin_edit_category_{category_id}")
+    builder.button(text="🗑 Удалить", callback_data=f"admin_delete_category_{category_id}")
+    builder.button(text="🔙 Назад", callback_data="admin_edit_categories")
+    
+    builder.adjust(1)
+    return builder.as_markup()
 
 
 def cancel_keyboard() -> ReplyKeyboardMarkup:

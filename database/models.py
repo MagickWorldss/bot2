@@ -133,6 +133,22 @@ class Image(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Category(Base):
+    """Category model for product categories."""
+    __tablename__ = 'categories'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(50), unique=True)  # winter, pharmacy, etc.
+    name: Mapped[str] = mapped_column(String(100))  # ❄️ Зима
+    icon: Mapped[str] = mapped_column(String(10))  # ❄️
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
 class Transaction(Base):
     """Transaction model."""
     __tablename__ = 'transactions'
@@ -425,3 +441,12 @@ class StaffPurchase(Base):
     staff_item_id: Mapped[int] = mapped_column(Integer, ForeignKey('staff_items.id'))
     points_spent: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+__all__ = [
+    'Base', 'User', 'Region', 'City', 'District', 'Image', 'Transaction', 'Purchase', 
+    'AdminLog', 'DepositRequest', 'PriceList', 'Promocode', 'PromocodeUsage', 
+    'Cart', 'Achievement', 'UserAchievement', 'Quest', 'UserQuest', 'SupportTicket', 
+    'TicketMessage', 'SeasonalEvent', 'Quiz', 'UserQuiz', 'Notification', 
+    'AuctionBid', 'StaffItem', 'StaffPurchase', 'Category'
+]
