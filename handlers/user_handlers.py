@@ -269,10 +269,13 @@ async def select_city_callback(
     if not districts:
         # No districts - save city directly
         await UserService.set_location(session, user.id, city.region_id, city_id)
-        await session.refresh(city, ['region'])
+        
+        # Load region manually
+        from services.location_service import LocationService
+        region = await LocationService.get_region_by_id(session, city.region_id)
         
         await callback.message.edit_text(
-            f"✅ Вы выбрали: {city.region.name}, {city.name}\n\n"
+            f"✅ Вы выбрали: {region.name if region else 'N/A'}, {city.name}\n\n"
             f"Теперь вы можете просмотреть каталог товаров."
         )
         await callback.answer("✅ Локация сохранена!")

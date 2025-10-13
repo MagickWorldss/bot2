@@ -233,9 +233,19 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     pages = paginate_list(images, page_size)
     current_page = pages[0] if pages else []
     
+    # Load location manually (no relationships in User model)
+    region_name = "не указан"
+    city_name = "не указан"
+    
+    if user.region_id and user.city_id:
+        region = await LocationService.get_region_by_id(session, user.region_id)
+        city = await LocationService.get_city_by_id(session, user.city_id)
+        region_name = region.name if region else "не указан"
+        city_name = city.name if city else "не указан"
+    
     catalog_text = f"🛍 **Каталог товаров**\n\n"
-    catalog_text += f"📍 Ваш регион: {user.region.name if user.region else 'не указан'}\n"
-    catalog_text += f"🏙 Ваш город: {user.city.name if user.city else 'не указан'}\n\n"
+    catalog_text += f"📍 Ваш регион: {region_name}\n"
+    catalog_text += f"🏙 Ваш город: {city_name}\n\n"
     catalog_text += f"Найдено товаров: **{len(images)}**\n\n"
     catalog_text += "Выберите товар для просмотра:"
     

@@ -677,13 +677,13 @@ async def add_city_name(message: Message, session: AsyncSession, user: User, sta
         
         await state.clear()
         
-        # Load region
-        await session.refresh(city, ['region'])
+        # Load region manually
+        region = await LocationService.get_region_by_id(session, region_id)
         
         await message.answer(
             f"✅ **Город успешно добавлен!**\n\n"
             f"Название: {city.name}\n"
-            f"Регион: {city.region.name}",
+            f"Регион: {region.name if region else 'N/A'}",
             reply_markup=admin_menu_keyboard(),
             parse_mode="Markdown"
         )
@@ -793,7 +793,9 @@ async def toggle_city_status(callback: CallbackQuery, session: AsyncSession):
     
     # Refresh
     await session.refresh(city)
-    await session.refresh(city, ['region'])
+    
+    # Load region manually
+    region = await LocationService.get_region_by_id(session, city.region_id)
     
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
@@ -808,7 +810,7 @@ async def toggle_city_status(callback: CallbackQuery, session: AsyncSession):
     
     await callback.message.edit_text(
         f"🏙 **Город: {city.name}**\n\n"
-        f"Регион: {city.region.name}\n"
+        f"Регион: {region.name if region else 'N/A'}\n"
         f"Статус: {status}\n\n"
         f"Выберите действие:",
         reply_markup=builder.as_markup(),
@@ -1362,13 +1364,19 @@ async def admin_view_purchases(callback: CallbackQuery, session: AsyncSession):
     for purchase in purchases:
         await session.refresh(purchase, ['image'])
         image = purchase.image
-        await session.refresh(image, ['region', 'city'])
+        
+        # Load location manually (no relationships)
+        region = await LocationService.get_region_by_id(session, image.region_id)
+        city = await LocationService.get_city_by_id(session, image.city_id)
+        
+        region_name = region.name if region else 'N/A'
+        city_name = city.name if city else 'N/A'
         
         history_text += (
             f"🖼 Товар #{image.id}\n"
             f"💶 Цена: €{purchase.price_sol:.2f}\n"
             f"📅 Дата: {purchase.created_at.strftime('%d.%m.%Y %H:%M')}\n"
-            f"📍 {image.region.name}, {image.city.name}\n\n"
+            f"📍 {region_name}, {city_name}\n\n"
         )
     
     await callback.message.answer(history_text, parse_mode="Markdown")
