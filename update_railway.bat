@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ КРИТИЧЕСКИЙ ФИХ: monitor_transactions + логирование покупок"
+git commit -m "✅ КРИТИЧЕСКИЙ ФИХ: asyncpg добавлен в requirements.txt"
 
 echo.
 echo 3. Загрузка на GitHub...
