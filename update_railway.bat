@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ИСПРАВЛЕНО: убрано file_path и uploaded_by из Image"
+git commit -m "✅ ИСПРАВЛЕНО: region relationship через LocationService"
 
 echo.
 echo 3. Загрузка на GitHub...

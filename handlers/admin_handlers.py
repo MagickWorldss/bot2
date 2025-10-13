@@ -354,9 +354,10 @@ async def add_product_description(
         
         await state.clear()
         
-        # Load location info
-        await session.refresh(image, ['region', 'city'])
-    
+        # Load location info manually (no relationships in Image model)
+        region = await LocationService.get_region_by_id(session, region_id)
+        city = await LocationService.get_city_by_id(session, city_id)
+        
         district_info = ""
         if district_id:
             from services.district_service import district_service
@@ -367,8 +368,8 @@ async def add_product_description(
         await message.answer(
             f"✅ **Товар успешно добавлен!**\n\n"
             f"ID: #{image.id}\n"
-            f"Регион: {image.region.name}\n"
-            f"Город: {image.city.name}\n"
+            f"Регион: {region.name if region else 'N/A'}\n"
+            f"Город: {city.name if city else 'N/A'}\n"
             f"{district_info}"
             f"💶 Цена: €{image.price_sol:.2f}\n"
             f"📝 Описание: {image.description or 'Нет'}",
