@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ФИНАЛ: catalog + pagination + EUR + ВСЁ РАБОТАЕТ"
+git commit -m "✅ КРИТИЧЕСКИЙ ФИХ: monitor_transactions + логирование покупок"
 
 echo.
 echo 3. Загрузка на GitHub...

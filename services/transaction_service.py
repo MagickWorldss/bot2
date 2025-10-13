@@ -15,10 +15,7 @@ class TransactionService:
         user_id: int,
         tx_type: str,
         amount_sol: float,
-        fee_sol: float = 0.0,
         tx_hash: Optional[str] = None,
-        from_address: Optional[str] = None,
-        to_address: Optional[str] = None,
         description: Optional[str] = None,
         status: str = 'pending'
     ) -> Transaction:
@@ -27,10 +24,7 @@ class TransactionService:
             user_id=user_id,
             tx_type=tx_type,
             amount_sol=amount_sol,
-            fee_sol=fee_sol,
             tx_hash=tx_hash,
-            from_address=from_address,
-            to_address=to_address,
             description=description,
             status=status
         )

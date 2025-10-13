@@ -124,9 +124,8 @@ async def process_deposits():
                             session=session,
                             user_id=user.id,
                             tx_type='deposit',
-                            amount_sol=sol_received,
-                            to_address=user.wallet_address,
-                            description=f"Deposit: {eur_amount:.2f} EUR (rate reserved)",
+                            amount_sol=eur_amount,  # Store EUR amount in transaction
+                            description=f"Deposit: {sol_received:.6f} SOL = {eur_amount:.2f} EUR (rate reserved)",
                             status='completed'
                         )
                         

@@ -233,6 +233,9 @@ async def buy_image(callback: CallbackQuery, user: User, session: AsyncSession):
 @router.callback_query(F.data.startswith("confirm_buy_"))
 async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSession):
     """Confirm and process purchase."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     image_id = int(callback.data.split("_")[2])
     
     image = await ImageService.get_image_by_id(session, image_id)
@@ -244,17 +247,28 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
         )
         return
     
+    # Log balance check
+    logger.info(f"Purchase attempt - User {user.id}: balance={user.balance_sol:.2f} EUR, price={image.price_sol:.2f} EUR")
+    
     # Check balance again
     if user.balance_sol < image.price_sol:
+        logger.warning(f"Insufficient funds - User {user.id}: balance={user.balance_sol:.2f} < price={image.price_sol:.2f}")
         await callback.answer(
-            "❌ Недостаточно средств.",
+            f"❌ Недостаточно средств.\nТребуется: €{image.price_sol:.2f}\nВаш баланс: €{user.balance_sol:.2f}",
             show_alert=True
         )
         return
     
     # Process purchase
+    logger.info(f"Processing purchase - User {user.id}, Product {image.id}, Price: €{image.price_sol:.2f}")
+    
     # 1. Deduct from balance
-    await UserService.update_balance(session, user.id, -image.price_sol)
+    success = await UserService.update_balance(session, user.id, -image.price_sol)
+    
+    if not success:
+        logger.error(f"Failed to update balance for user {user.id}")
+        await callback.answer("❌ Ошибка при обновлении баланса", show_alert=True)
+        return
     
     # 2. Mark as sold
     await ImageService.mark_as_sold(session, image_id, user.id, image.price_sol)

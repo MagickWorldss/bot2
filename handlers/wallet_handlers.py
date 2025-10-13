@@ -249,10 +249,7 @@ async def withdraw_amount(
         user_id=user.id,
         tx_type='withdrawal',
         amount_sol=amount,
-        fee_sol=fee,
-        to_address=withdraw_address,
-        from_address=user.wallet_address,
-        description=f"Вывод средств на {withdraw_address}",
+        description=f"Вывод средств на {withdraw_address} (комиссия: {fee:.2f} EUR)",
         status='pending'
     )
     
