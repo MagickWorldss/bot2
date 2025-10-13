@@ -10,7 +10,7 @@ git add .
 
 echo.
 echo 2. Создание коммита...
-git commit -m "✅ ФИНАЛ: Все районы + микрорайоны + логирование + try-catch"
+git commit -m "✅ ИСПРАВЛЕНО: убрано file_path из Image + все работает"
 
 echo.
 echo 3. Загрузка на GitHub...

@@ -22,9 +22,10 @@ class ImageService:
         district_id: Optional[int] = None
     ) -> Image:
         """Add new image to database."""
+        # Note: file_path argument is received but not used in Image model
+        # Image model only has file_id, not file_path
         image = Image(
             file_id=file_id,
-            file_path=file_path,
             price_sol=price_sol,
             region_id=region_id,
             city_id=city_id,
