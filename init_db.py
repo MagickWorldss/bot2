@@ -1,6 +1,8 @@
 """Database initialization script for Lithuania structure."""
 import asyncio
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from database.database import db
 from database.models import Region, City, District
 from services.location_service import LocationService
