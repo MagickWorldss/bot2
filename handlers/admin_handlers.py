@@ -2048,7 +2048,21 @@ async def admin_edit_category_name(message: Message, state: FSMContext):
     
     await message.answer(
         f"✏️ Новое название: `{name}`\n\n"
-        f"Введите новую иконку (или оставьте текущую):",
+        f"🎨 **Введите новую иконку:**\n\n"
+        f"Примеры иконок:\n"
+        f"❄️ (снежинка)\n"
+        f"💊 (таблетка)\n"
+        f"☀️ (солнце)\n"
+        f"🌿 (лист)\n"
+        f"🏙️ (город)\n"
+        f"🍕 (еда)\n"
+        f"🎨 (палитра)\n"
+        f"💻 (компьютер)\n"
+        f"👗 (платье)\n"
+        f"⚽ (мяч)\n"
+        f"🐕 (собака)\n"
+        f"✈️ (самолет)\n\n"
+        f"Или оставьте текущую иконку, введя ту же:",
         reply_markup=cancel_keyboard(),
         parse_mode="Markdown"
     )
@@ -2071,7 +2085,8 @@ async def admin_edit_category_icon(message: Message, state: FSMContext):
     
     await message.answer(
         f"✏️ Новая иконка: {icon}\n\n"
-        f"Введите новое описание (или оставьте текущее):",
+        f"📝 **Введите новое описание:**\n\n"
+        f"Опишите категорию товаров (например: \"Зимние пейзажи, снег, мороз\"):",
         reply_markup=cancel_keyboard(),
         parse_mode="Markdown"
     )
@@ -2093,7 +2108,7 @@ async def admin_edit_category_description(message: Message, state: FSMContext, s
     
     try:
         # Update category
-        updated_category = await category_service.update_category(
+        success = await category_service.update_category(
             session=session,
             category_id=data['category_id'],
             name=data['name'],
@@ -2101,7 +2116,9 @@ async def admin_edit_category_description(message: Message, state: FSMContext, s
             description=description
         )
         
-        if updated_category:
+        if success:
+            # Get updated category
+            updated_category = await category_service.get_category_by_id(session, data['category_id'])
             await state.clear()
             
             await message.answer(
