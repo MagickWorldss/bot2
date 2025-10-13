@@ -255,8 +255,7 @@ async def cancel_add_product(callback: CallbackQuery, state: FSMContext):
     """Cancel product addition."""
     await state.clear()
     await callback.message.edit_text(
-        "❌ Добавление товара отменено.",
-        reply_markup=admin_menu_keyboard()
+        "❌ Добавление товара отменено."
     )
     await callback.answer("❌ Отменено")
 
@@ -1928,11 +1927,15 @@ async def admin_edit_categories_list(callback: CallbackQuery, user: User, sessio
         text += f"{status} **{category.name}** (`{category.key}`)\n"
         text += f"   {category.description or 'Нет описания'}\n\n"
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=admin_categories_list_keyboard(categories),
-        parse_mode="Markdown"
-    )
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=admin_categories_list_keyboard(categories),
+            parse_mode="Markdown"
+        )
+    except Exception:
+        # Message is not modified, ignore error
+        pass
     await callback.answer()
 
 
@@ -2022,7 +2025,7 @@ async def admin_edit_category_start(callback: CallbackQuery, user: User, state: 
         f"✏️ **Редактирование категории: {category.name}**\n\n"
         f"Текущее название: `{category.name}`\n\n"
         f"Введите новое название (или оставьте текущее):",
-        reply_markup=cancel_keyboard(),
+        reply_markup=cancel_inline_keyboard(),
         parse_mode="Markdown"
     )
     await callback.answer()
