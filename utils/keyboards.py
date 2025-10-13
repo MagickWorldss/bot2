@@ -140,6 +140,14 @@ def admin_category_actions_keyboard(category_id: int) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def cancel_inline_keyboard() -> InlineKeyboardMarkup:
+    """Inline cancel keyboard."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text="❌ Отмена", callback_data="cancel_add_product")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def cancel_keyboard() -> ReplyKeyboardMarkup:
     """Cancel keyboard."""
     builder = ReplyKeyboardBuilder()

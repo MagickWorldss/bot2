@@ -21,6 +21,7 @@ from utils.keyboards import (
     admin_categories_list_keyboard,
     admin_category_actions_keyboard,
     cancel_keyboard,
+    cancel_inline_keyboard,
     admin_menu_keyboard
 )
 from utils.preview_categories import get_category_keyboard, get_category_info, format_category_display
@@ -274,7 +275,7 @@ async def add_product_category(callback: CallbackQuery, session: AsyncSession, s
         f"🖼 **Отправьте превью-изображение:**\n\n"
         f"Это изображение будет показано в каталоге как превью товара.\n"
         f"Рекомендуется использовать тематическую иконку или символ категории.",
-        reply_markup=cancel_keyboard()
+        reply_markup=cancel_inline_keyboard()
     )
     await callback.answer()
 
@@ -1721,7 +1722,7 @@ async def set_user_role(callback: CallbackQuery, session: AsyncSession):
 @router.message(F.text == "📂 Категории товаров")
 async def admin_categories_menu(message: Message, user: User):
     """Show category management menu."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await message.answer("⛔️ Нет доступа")
         return
     
@@ -1736,7 +1737,7 @@ async def admin_categories_menu(message: Message, user: User):
 @router.callback_query(F.data == "admin_categories_menu")
 async def admin_categories_menu_callback(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show category management menu."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -1752,7 +1753,7 @@ async def admin_categories_menu_callback(callback: CallbackQuery, user: User, se
 @router.callback_query(F.data == "admin_add_category")
 async def admin_add_category_start(callback: CallbackQuery, user: User, state: FSMContext):
     """Start adding category."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -1905,7 +1906,7 @@ async def admin_add_category_description(message: Message, state: FSMContext, se
 @router.callback_query(F.data == "admin_edit_categories")
 async def admin_edit_categories_list(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show categories list for editing."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -1938,7 +1939,7 @@ async def admin_edit_categories_list(callback: CallbackQuery, user: User, sessio
 @router.callback_query(F.data.startswith("admin_category_"))
 async def admin_category_actions(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show category actions."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -1969,7 +1970,7 @@ async def admin_category_actions(callback: CallbackQuery, user: User, session: A
 @router.callback_query(F.data == "admin_init_categories")
 async def admin_init_categories(callback: CallbackQuery, user: User, session: AsyncSession):
     """Initialize default categories."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -2003,7 +2004,7 @@ async def admin_init_categories(callback: CallbackQuery, user: User, session: As
 @router.callback_query(F.data.startswith("admin_edit_category_"))
 async def admin_edit_category_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
     """Start editing category."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
@@ -2135,7 +2136,7 @@ async def admin_edit_category_description(message: Message, state: FSMContext, s
 @router.callback_query(F.data.startswith("admin_delete_category_"))
 async def admin_delete_category(callback: CallbackQuery, user: User, session: AsyncSession):
     """Delete category."""
-    if not is_admin(user.id):
+    if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
