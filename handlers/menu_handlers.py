@@ -5,6 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
+from services.location_service import LocationService
 from utils.keyboards import quests_menu_keyboard, profile_menu_keyboard, shop_menu_keyboard
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,6 @@ async def show_shop_menu(message: Message, user: User, session: AsyncSession):
 async def all_districts_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show all districts with product counts."""
     from services.district_service import district_service
-    from services.location_service import LocationService
     from services.image_service import ImageService
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     
@@ -173,7 +173,6 @@ async def back_to_shop_menu(callback: CallbackQuery, user: User, session: AsyncS
 @router.callback_query(F.data == "change_region_menu")
 async def change_region_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Change region from shop menu."""
-    from services.location_service import LocationService
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     
     regions = await LocationService.get_all_regions(session)

@@ -1188,7 +1188,6 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
     
     # Load region and city if exist
     if target_user.region_id and target_user.city_id:
-        from services.location_service import LocationService
         region = await LocationService.get_region_by_id(session, target_user.region_id)
         city = await LocationService.get_city_by_id(session, target_user.city_id)
         if region and city:

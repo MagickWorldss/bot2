@@ -7,6 +7,7 @@ from database.models import User
 from services.image_service import ImageService
 from services.user_service import UserService
 from services.transaction_service import TransactionService
+from services.location_service import LocationService
 from utils.keyboards import catalog_keyboard, image_view_keyboard, confirm_purchase_keyboard
 from utils.helpers import format_sol_amount, paginate_list
 
@@ -108,7 +109,6 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
         return
     
     # Load location manually (no relationships)
-    from services.location_service import LocationService
     region = await LocationService.get_region_by_id(session, image.region_id)
     city = await LocationService.get_city_by_id(session, image.city_id)
     

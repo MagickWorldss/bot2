@@ -7,6 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
 from services.image_service import ImageService
+from services.location_service import LocationService
 from utils.keyboards import main_menu_keyboard
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,6 @@ async def my_products(callback: CallbackQuery, user: User, session: AsyncSession
     
     for img in images[:20]:  # Show first 20
         # Load location manually (no relationships)
-        from services.location_service import LocationService
         region = await LocationService.get_region_by_id(session, img.region_id)
         city = await LocationService.get_city_by_id(session, img.city_id)
         
@@ -110,7 +110,6 @@ async def manage_product(callback: CallbackQuery, user: User, session: AsyncSess
     # For now, sellers can manage all products like moderators
     
     # Load location manually (no relationships)
-    from services.location_service import LocationService
     region = await LocationService.get_region_by_id(session, image.region_id)
     city = await LocationService.get_city_by_id(session, image.city_id)
     
@@ -220,7 +219,6 @@ async def seller_add_product_start(callback: CallbackQuery, user: User, session:
     """Start adding product for seller."""
     # Import states from admin_handlers
     from handlers.admin_handlers import AddImageStates
-    from services.location_service import LocationService
     from utils.keyboards import cancel_keyboard
     
     # Check role

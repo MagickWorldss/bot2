@@ -271,7 +271,6 @@ async def select_city_callback(
         await UserService.set_location(session, user.id, city.region_id, city_id)
         
         # Load region manually
-        from services.location_service import LocationService
         region = await LocationService.get_region_by_id(session, city.region_id)
         
         await callback.message.edit_text(
