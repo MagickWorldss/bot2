@@ -102,7 +102,7 @@ class QuestService:
             return
         
         if quest.reward_type == 'sol':
-            user.balance_sol += quest.reward_value
+            user.balance_eur += quest.reward_value
         elif quest.reward_type == 'points':
             user.achievement_points += int(quest.reward_value)
         elif quest.reward_type == 'promocode':

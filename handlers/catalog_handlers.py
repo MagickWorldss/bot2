@@ -52,7 +52,7 @@ async def show_catalog(message: Message, user: User, session: AsyncSession, stat
     await message.answer(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
+        f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -87,7 +87,7 @@ async def catalog_page(
     await callback.message.edit_text(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
+        f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -124,7 +124,7 @@ async def view_image(callback: CallbackQuery, user: User, session: AsyncSession)
 🏙 Город: {city_name}
 
 💶 Цена: €{image.price_sol:.2f}
-💰 Ваш баланс: €{user.balance_sol:.2f}
+💰 Ваш баланс: €{user.balance_eur:.2f}
 """
     
     if image.description:
@@ -191,7 +191,7 @@ async def back_to_catalog(
     await callback.message.edit_text(
         f"🛍 **Каталог товаров**\n\n"
         f"Найдено товаров: {len(images)}\n"
-        f"💶 Ваш баланс: €{user.balance_sol:.2f}\n\n"
+        f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
         f"Выберите товар для просмотра:",
         reply_markup=keyboard,
         parse_mode="Markdown"
@@ -214,11 +214,11 @@ async def buy_image(callback: CallbackQuery, user: User, session: AsyncSession):
         return
     
     # Check balance
-    if user.balance_sol < image.price_sol:
+    if user.balance_eur < image.price_sol:
         await callback.answer(
             f"❌ Недостаточно средств.\n"
             f"Требуется: €{image.price_sol:.2f}\n"
-            f"Ваш баланс: €{user.balance_sol:.2f}",
+            f"Ваш баланс: €{user.balance_eur:.2f}",
             show_alert=True
         )
         return
@@ -254,13 +254,13 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
         return
     
     # Log balance check
-    logger.info(f"Purchase attempt - User {user.id}: balance={user.balance_sol:.2f} EUR, price={image.price_sol:.2f} EUR")
+    logger.info(f"Purchase attempt - User {user.id}: balance={user.balance_eur:.2f} EUR, price={image.price_sol:.2f} EUR")
     
     # Check balance again
-    if user.balance_sol < image.price_sol:
-        logger.warning(f"Insufficient funds - User {user.id}: balance={user.balance_sol:.2f} < price={image.price_sol:.2f}")
+    if user.balance_eur < image.price_sol:
+        logger.warning(f"Insufficient funds - User {user.id}: balance={user.balance_eur:.2f} < price={image.price_sol:.2f}")
         await callback.answer(
-            f"❌ Недостаточно средств.\nТребуется: €{image.price_sol:.2f}\nВаш баланс: €{user.balance_sol:.2f}",
+            f"❌ Недостаточно средств.\nТребуется: €{image.price_sol:.2f}\nВаш баланс: €{user.balance_eur:.2f}",
             show_alert=True
         )
         return
@@ -308,7 +308,7 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
             f"Товар: #{image.id}\n"
             f"📂 Категория: {format_category_display(image.category) if image.category else 'Не указана'}\n"
             f"💶 Оплачено: €{image.price_sol:.2f}\n"
-            f"💰 Остаток баланса: €{user.balance_sol:.2f}\n\n"
+            f"💰 Остаток баланса: €{user.balance_eur:.2f}\n\n"
             f"Спасибо за покупку! 🎉",
             parse_mode="Markdown"
         )

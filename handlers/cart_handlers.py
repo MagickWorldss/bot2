@@ -74,7 +74,7 @@ async def view_cart(message: Message, user: User, session: AsyncSession, edit: b
     
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     text += f"💶 **Итого:** €{total_eur:.2f}\n\n"
-    text += f"💰 **Твой баланс:** €{user.balance_sol:.2f}\n"
+    text += f"💰 **Твой баланс:** €{user.balance_eur:.2f}\n"
     
     # Build keyboard
     builder = InlineKeyboardBuilder()
@@ -86,10 +86,10 @@ async def view_cart(message: Message, user: User, session: AsyncSession, edit: b
     builder.adjust(2)
     
     # Buy all button
-    if user.balance_sol >= total_sol:
+    if user.balance_eur >= total_sol:
         builder.button(text="💳 Купить всё", callback_data="buy_cart")
     else:
-        deficit = total_sol - user.balance_sol
+        deficit = total_sol - user.balance_eur
         # ВАЖНО: deficit уже в EUR!
         builder.button(text=f"💳 Не хватает €{deficit:.2f}", callback_data="need_balance")
     
@@ -140,7 +140,7 @@ async def buy_cart_callback(callback: CallbackQuery, user: User, session: AsyncS
     total_sol = sum(item.price_sol for item in items)
     
     # Check balance
-    if user.balance_sol < total_sol:
+    if user.balance_eur < total_sol:
         await callback.answer("❌ Недостаточно средств", show_alert=True)
         return
     

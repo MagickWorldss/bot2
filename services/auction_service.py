@@ -43,7 +43,7 @@ class AuctionService:
             return False, f"❌ Ставка должна быть больше {min_bid} SOL"
         
         # Check user balance
-        stmt = select(User.balance_sol).where(User.id == user_id)
+        stmt = select(User.balance_eur).where(User.id == user_id)
         result = await session.execute(stmt)
         balance = result.scalar_one_or_none()
         
@@ -53,13 +53,13 @@ class AuctionService:
         # Return previous bidder's money
         if item.highest_bidder_id and item.highest_bidder_id != user_id:
             stmt = update(User).where(User.id == item.highest_bidder_id).values(
-                balance_sol=User.balance_sol + item.current_bid_sol
+                balance_eur=User.balance_eur + item.current_bid_sol
             )
             await session.execute(stmt)
         
         # Reserve new bidder's money
         stmt = update(User).where(User.id == user_id).values(
-            balance_sol=User.balance_sol - bid_amount_sol
+            balance_eur=User.balance_eur - bid_amount_sol
         )
         await session.execute(stmt)
         

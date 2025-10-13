@@ -20,8 +20,8 @@ router = Router(name='user_handlers')
 async def cmd_start(message: Message, user: User, session: AsyncSession):
     """Handle /start command."""
     from services.price_service import price_service
-    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
-    balance_eur = user.balance_sol
+    # ВАЖНО: balance_eur хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_eur
     
     welcome_text = f"""
 👋 **Добро пожаловать, {user.first_name or 'пользователь'}!**
@@ -140,8 +140,8 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
     
     # Get current rate
     rate = await price_service.get_sol_eur_rate()
-    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
-    balance_eur = user.balance_sol
+    # ВАЖНО: balance_eur хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_eur
     
     # Check for active deposit request
     active_deposit = await deposit_service.get_active_deposit(session, user.id)

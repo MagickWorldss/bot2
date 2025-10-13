@@ -85,7 +85,7 @@ class QuizService:
             
             if user:
                 if quiz.reward_type == 'sol':
-                    user.balance_sol += quiz.reward_value
+                    user.balance_eur += quiz.reward_value
                     reward = quiz.reward_value
                 elif quiz.reward_type == 'points':
                     user.achievement_points += int(quiz.reward_value)

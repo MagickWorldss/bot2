@@ -46,7 +46,7 @@ class UserService:
             last_name=last_name,
             wallet_address=public_key,
             wallet_private_key=encrypted_private_key,
-            balance_sol=0.0
+            balance_eur=0.0
         )
         session.add(user)
         await session.commit()
@@ -69,10 +69,10 @@ class UserService:
         if not user:
             return False
         
-        user.balance_sol += amount
+        user.balance_eur += amount
         await session.commit()
         await session.refresh(user)  # Refresh to ensure changes are saved
-        logger.info(f"User {user_id} balance updated: {amount:+.2f}, new balance: {user.balance_sol:.2f}")
+        logger.info(f"User {user_id} balance updated: {amount:+.2f}, new balance: {user.balance_eur:.2f}")
         return True
     
     @staticmethod

@@ -90,7 +90,7 @@ class ReferralService:
         
         # Give bonus to referrer
         stmt = update(User).where(User.id == referrer_id).values(
-            balance_sol=User.balance_sol + bonus_amount,
+            balance_eur=User.balance_eur + bonus_amount,
             referral_earnings_sol=User.referral_earnings_sol + bonus_amount
         )
         await session.execute(stmt)

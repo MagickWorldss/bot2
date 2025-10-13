@@ -35,15 +35,14 @@ class BalanceAPI:
             return None
         
         # Get balance in EUR
-        balance_eur = await price_service.sol_to_eur(user.balance_sol)
+        balance_eur = await price_service.sol_to_eur(user.balance_eur)
         rate = await price_service.get_sol_eur_rate()
         
         return {
             'telegram_id': user.id,
             'username': user.username,
             'first_name': user.first_name,
-            'balance_sol': user.balance_sol,
-            'balance_eur': balance_eur,
+            'balance_eur': user.balance_eur,
             'wallet_address': user.wallet_address,
             'current_rate': rate,
             'is_blocked': user.is_blocked

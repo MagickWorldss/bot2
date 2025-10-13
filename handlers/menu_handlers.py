@@ -17,8 +17,8 @@ router = Router(name='menu_handlers')
 async def show_shop_menu(message: Message, user: User, session: AsyncSession):
     """Show shop menu."""
     from services.price_service import price_service
-    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
-    balance_eur = user.balance_sol
+    # ВАЖНО: balance_eur хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_eur
     
     text = f"""
 🛍 **Магазин**
@@ -290,8 +290,8 @@ async def show_quests_menu(message: Message):
 async def show_profile_menu(message: Message, user: User, session: AsyncSession):
     """Show profile menu."""
     from services.price_service import price_service
-    # ВАЖНО: balance_sol уже хранит EUR, НЕ КОНВЕРТИРУЕМ!
-    balance_eur = user.balance_sol
+    # ВАЖНО: balance_eur хранит EUR, НЕ КОНВЕРТИРУЕМ!
+    balance_eur = user.balance_eur
     
     text = f"""
 👤 **Ваш профиль**

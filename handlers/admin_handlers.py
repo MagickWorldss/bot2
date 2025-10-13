@@ -1296,7 +1296,7 @@ async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
         f"Username: {username_display}\n"
         f"Статус: {status}\n"
         f"👑 Роль: *{role_name}*\n\n"
-        f"💶 Баланс: €{target_user.balance_sol:.2f}\n"
+        f"💶 Баланс: €{target_user.balance_eur:.2f}\n"
         f"📍 Локация: {location}\n"
         f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"Выберите действие:"
@@ -1353,7 +1353,7 @@ async def admin_block_user(callback: CallbackQuery, session: AsyncSession, user:
             f"Имя: {target_user.first_name or 'N/A'}\n"
             f"Username: @{target_user.username or 'N/A'}\n"
             f"Статус: {status}\n\n"
-            f"💰 Баланс: {format_sol_amount(target_user.balance_sol)}\n"
+            f"💰 Баланс: {format_sol_amount(target_user.balance_eur)}\n"
             f"📍 Локация: {location}\n"
             f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"Выберите действие:"
@@ -1412,7 +1412,7 @@ async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, use
             f"Имя: {target_user.first_name or 'N/A'}\n"
             f"Username: @{target_user.username or 'N/A'}\n"
             f"Статус: {status}\n\n"
-            f"💰 Баланс: {format_sol_amount(target_user.balance_sol)}\n"
+            f"💰 Баланс: {format_sol_amount(target_user.balance_eur)}\n"
             f"📍 Локация: {location}\n"
             f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
             f"Выберите действие:"
@@ -1580,7 +1580,7 @@ async def admin_add_balance_amount(
             f"✅ *Баланс изменен!*\n\n"
             f"Пользователь: {target_user_id}\n"
             f"{operation.capitalize()}: €{abs(amount):.2f}\n"
-            f"💶 Новый баланс: €{target_user.balance_sol:.2f}",
+            f"💶 Новый баланс: €{target_user.balance_eur:.2f}",
             reply_markup=admin_menu_keyboard(),
             parse_mode="Markdown"
         )
@@ -1627,10 +1627,10 @@ async def admin_reset_balance(callback: CallbackQuery, user: User, session: Asyn
         await callback.answer("❌ Пользователь не найден", show_alert=True)
         return
     
-    old_balance = target_user.balance_sol
+    old_balance = target_user.balance_eur
     
     # Reset balance
-    target_user.balance_sol = 0.0
+    target_user.balance_eur = 0.0
     await session.commit()
     
     # Log action

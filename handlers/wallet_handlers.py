@@ -149,7 +149,7 @@ async def deposit_amount(message: Message, user: User, session: AsyncSession, st
 @router.callback_query(F.data == "withdraw")
 async def withdraw_init(callback: CallbackQuery, user: User, state: FSMContext):
     """Initialize withdrawal."""
-    if user.balance_sol <= 0:
+    if user.balance_eur <= 0:
         await callback.answer(
             "❌ Недостаточно средств для вывода.",
             show_alert=True
@@ -158,7 +158,7 @@ async def withdraw_init(callback: CallbackQuery, user: User, state: FSMContext):
     
     await callback.message.answer(
         f"💸 **Вывод средств**\n\n"
-        f"Доступно для вывода: {format_sol_amount(user.balance_sol)}\n"
+        f"Доступно для вывода: {format_sol_amount(user.balance_eur)}\n"
         f"Комиссия: 2%\n\n"
         f"Введите адрес кошелька SOL для вывода:",
         reply_markup=cancel_keyboard(),
@@ -225,11 +225,11 @@ async def withdraw_amount(
     total = amount + fee
     
     # Check balance
-    if total > user.balance_sol:
+    if total > user.balance_eur:
         await message.answer(
             f"❌ Недостаточно средств.\n\n"
             f"Требуется: {format_sol_amount(total)} (включая комиссию {format_sol_amount(fee)})\n"
-            f"Ваш баланс: {format_sol_amount(user.balance_sol)}"
+            f"Ваш баланс: {format_sol_amount(user.balance_eur)}"
         )
         return
     
