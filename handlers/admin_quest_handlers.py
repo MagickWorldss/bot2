@@ -1,6 +1,6 @@
 """Admin handlers for quest management."""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -398,7 +398,7 @@ async def admin_add_quest_duration(message: Message, state: FSMContext, session:
     data = await state.get_data()
     
     # Create quest
-    starts_at = datetime.utcnow()
+    starts_at = datetime.now(timezone.utc)
     ends_at = starts_at + timedelta(days=days)
     
     quest = await QuestService.create_quest(

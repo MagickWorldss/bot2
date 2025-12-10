@@ -1,8 +1,8 @@
 """Real-life quest service for treasure hunt."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from database.models import RealQuestTask, RealQuestPrize, UserRealQuest, User
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class RealQuestService:
         # Check if quest completed
         if progress.current_task > 20:
             progress.is_completed = True
-            progress.completed_at = datetime.utcnow()
+            progress.completed_at = datetime.now(timezone.utc)
             
             # Mark prize as claimed
             if progress.prize_id:
@@ -113,7 +113,7 @@ class RealQuestService:
                 if prize:
                     prize.is_claimed = True
                     prize.claimed_by = user_id
-                    prize.claimed_at = datetime.utcnow()
+                    prize.claimed_at = datetime.now(timezone.utc)
             
             await session.commit()
             logger.info(f"User {user_id} completed real quest!")

@@ -1,5 +1,5 @@
 """Wallet handlers for balance operations."""
-from datetime import datetime
+from datetime import datetime, timezone
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -36,7 +36,7 @@ async def deposit_init(callback: CallbackQuery, user: User, session: AsyncSessio
     
     if active_deposit:
         # Show existing deposit
-        remaining = active_deposit.expires_at - datetime.utcnow()
+        remaining = active_deposit.expires_at - datetime.now(timezone.utc)
         minutes = int(remaining.total_seconds() / 60)
         seconds = int(remaining.total_seconds() % 60)
         

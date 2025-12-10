@@ -1,6 +1,6 @@
 """Notification service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import Notification, User
@@ -67,7 +67,7 @@ class NotificationService:
         """Mark notification as sent."""
         stmt = update(Notification).where(Notification.id == notification_id).values(
             sent=True,
-            sent_at=datetime.utcnow()
+            sent_at=datetime.now(timezone.utc)
         )
         await session.execute(stmt)
         await session.commit()

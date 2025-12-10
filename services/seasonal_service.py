@@ -1,6 +1,6 @@
 """Seasonal events service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.models import SeasonalEvent
@@ -14,7 +14,7 @@ class SeasonalService:
     @staticmethod
     async def get_active_events(session: AsyncSession) -> list[SeasonalEvent]:
         """Get all active seasonal events."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         stmt = select(SeasonalEvent).where(
             SeasonalEvent.is_active == True,
             SeasonalEvent.starts_at <= now,
@@ -91,7 +91,7 @@ class SeasonalService:
             event_type=event_type,
             discount_percent=discount_percent,
             bonus_multiplier=bonus_multiplier,
-            starts_at=starts_at or datetime.utcnow(),
+            starts_at=starts_at or datetime.now(timezone.utc),
             ends_at=ends_at,
             is_active=True
         )

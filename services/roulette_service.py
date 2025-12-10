@@ -1,7 +1,7 @@
 """Roulette service for daily wheel spin."""
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from database.models import RoulettePrize, UserRouletteSpin, User
@@ -15,7 +15,7 @@ class RouletteService:
     @staticmethod
     async def can_spin_today(session: AsyncSession, user_id: int) -> bool:
         """Check if user can spin today."""
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         
         stmt = select(UserRouletteSpin).where(
             UserRouletteSpin.user_id == user_id,

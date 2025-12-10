@@ -1,5 +1,5 @@
 """User handlers for basic commands."""
-from datetime import datetime
+from datetime import datetime, timezone
 from aiogram import Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, CallbackQuery
@@ -173,7 +173,7 @@ async def show_balance_redirect(message: Message, user: User, session: AsyncSess
     
     if active_deposit:
         # Calculate remaining time
-        remaining = active_deposit.expires_at - datetime.utcnow()
+        remaining = active_deposit.expires_at - datetime.now(timezone.utc)
         if remaining.total_seconds() > 0:
             minutes = int(remaining.total_seconds() / 60)
             seconds = int(remaining.total_seconds() % 60)

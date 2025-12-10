@@ -1,6 +1,6 @@
 """Quest and challenge service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import Quest, UserQuest, User
@@ -14,7 +14,7 @@ class QuestService:
     @staticmethod
     async def get_active_quests(session: AsyncSession) -> list[Quest]:
         """Get all active quests."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         stmt = select(Quest).where(
             Quest.is_active == True,
             Quest.starts_at <= now,
@@ -83,7 +83,7 @@ class QuestService:
             # Check completion
             if user_quest.progress >= quest.condition_value:
                 user_quest.completed = True
-                user_quest.completed_at = datetime.utcnow()
+                user_quest.completed_at = datetime.now(timezone.utc)
                 
                 # Give reward
                 await QuestService._give_reward(session, user_id, quest)

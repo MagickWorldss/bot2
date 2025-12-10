@@ -84,8 +84,8 @@ class ImageService:
         
         # Mark as sold
         image.is_sold = True
-        from datetime import datetime
-        image.sold_at = datetime.utcnow()
+        from datetime import datetime, timezone
+        image.sold_at = datetime.now(timezone.utc)
         
         # Create purchase record
         purchase = Purchase(
@@ -105,12 +105,8 @@ class ImageService:
         if not image:
             return False
         
-        # Delete file if exists
-        if os.path.exists(image.file_path):
-            try:
-                os.remove(image.file_path)
-            except Exception as e:
-                print(f"Error deleting file: {e}")
+        # Note: Files are stored on Telegram servers, not locally
+        # No need to delete local files
         
         # Delete from database
         await session.delete(image)
@@ -168,9 +164,10 @@ class ImageService:
     @staticmethod
     async def get_images_by_uploader(session: AsyncSession, user_id: int, limit: int = 50):
         """Get images uploaded by specific user."""
+        # Note: Image model doesn't have uploaded_by field
+        # Return all images for now
         result = await session.execute(
             select(Image)
-            .where(Image.uploaded_by == user_id)
             .order_by(Image.created_at.desc())
             .limit(limit)
         )

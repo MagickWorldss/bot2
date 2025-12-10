@@ -1,6 +1,6 @@
 """Support ticket service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import SupportTicket, TicketMessage
@@ -67,7 +67,7 @@ class TicketService:
                 SupportTicket.id == ticket_id
             ).values(
                 status='in_progress',
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(timezone.utc)
             )
             await session.execute(stmt)
         
@@ -102,7 +102,7 @@ class TicketService:
             SupportTicket.id == ticket_id
         ).values(
             status='closed',
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
         await session.execute(stmt)
         await session.commit()
@@ -117,7 +117,7 @@ class TicketService:
         ).values(
             assigned_to=admin_id,
             status='in_progress',
-            updated_at=datetime.utcnow()
+            updated_at=datetime.now(timezone.utc)
         )
         await session.execute(stmt)
         await session.commit()

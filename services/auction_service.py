@@ -1,6 +1,6 @@
 """Auction service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import Image, AuctionBid, User
@@ -34,7 +34,7 @@ class AuctionService:
             return False, "❌ Аукцион завершен"
         
         # Check if auction ended
-        if item.auction_ends_at and datetime.utcnow() > item.auction_ends_at:
+        if item.auction_ends_at and datetime.now(timezone.utc) > item.auction_ends_at:
             return False, "❌ Аукцион завершен"
         
         # Check bid amount
@@ -99,7 +99,7 @@ class AuctionService:
         # Transfer item to winner
         item.is_sold = True
         item.sold_to = item.highest_bidder_id
-        item.sold_at = datetime.utcnow()
+        item.sold_at = datetime.now(timezone.utc)
         
         # Money already reserved, just log it
         logger.info(f"Auction completed: item {image_id} won by user {item.highest_bidder_id} for {item.current_bid_sol} SOL")
@@ -122,7 +122,7 @@ class AuctionService:
         result = await session.execute(stmt)
         recent_bids = list(result.scalars().all())
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         time_left = (item.auction_ends_at - now).total_seconds() if item.auction_ends_at else None
         
         return {

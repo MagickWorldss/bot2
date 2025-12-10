@@ -1203,11 +1203,23 @@ async def delete_city_confirm(callback: CallbackQuery, session: AsyncSession):
 @router.message(F.text.in_(["👥 Управление пользователями", "👥 Пользователи"]))
 async def manage_users(message: Message, user: User, session: AsyncSession):
     """Show user management options."""
+    logger.info(f"User {user.id} ({user.username}) trying to access user management")
+    
     if not is_admin(user.id, settings.admin_list):
+        logger.warning(f"User {user.id} is not admin, access denied")
         await message.answer("⛔️ У вас нет доступа к этой функции.")
         return
     
+    logger.info(f"Admin {user.id} accessing user management")
     users = await UserService.get_all_users(session, limit=20)
+    
+    if not users:
+        await message.answer(
+            "👥 **Управление пользователями**\n\n"
+            "Пользователи не найдены.",
+            parse_mode="Markdown"
+        )
+        return
     
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     builder = InlineKeyboardBuilder()
@@ -1231,8 +1243,12 @@ async def manage_users(message: Message, user: User, session: AsyncSession):
 
 
 @router.callback_query(F.data.startswith("admin_user_"))
-async def admin_user_actions(callback: CallbackQuery, session: AsyncSession):
+async def admin_user_actions(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show user actions."""
+    # Check admin access
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа к этой функции.", show_alert=True)
+        return
     # Parse user_id correctly for different callback patterns
     parts = callback.data.split("_")
     if len(parts) == 3:
@@ -1352,8 +1368,8 @@ async def admin_block_user(callback: CallbackQuery, session: AsyncSession, user:
             data=f"admin_user_{user_id}"
         )
         
-        # Refresh user info
-        await admin_user_actions(new_callback, session)
+        # Refresh user info - pass user from current context
+        await admin_user_actions(new_callback, user, session)
         return
         
         status = "🚫 Заблокирован"
@@ -1411,8 +1427,8 @@ async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, use
             data=f"admin_user_{user_id}"
         )
         
-        # Refresh user info
-        await admin_user_actions(new_callback, session)
+        # Refresh user info - pass user from current context
+        await admin_user_actions(new_callback, user, session)
         return
         
         status = "✅ Активен"
@@ -1603,8 +1619,13 @@ async def admin_add_balance_amount(
 
 
 @router.callback_query(F.data == "admin_users_list")
-async def admin_users_list_callback(callback: CallbackQuery, session: AsyncSession):
+async def admin_users_list_callback(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to users list."""
+    # Check admin access
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа к этой функции.", show_alert=True)
+        return
+    
     users = await UserService.get_all_users(session, limit=20)
     
     from aiogram.utils.keyboard import InlineKeyboardBuilder

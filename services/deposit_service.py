@@ -1,5 +1,5 @@
 """Deposit service for managing EUR deposits with rate reservation."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -43,7 +43,7 @@ class DepositService:
             sol_amount=sol_amount,
             reserved_rate=rate,
             status='pending',
-            expires_at=datetime.utcnow() + timedelta(minutes=30)
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)
         )
         
         session.add(deposit)
@@ -69,7 +69,7 @@ class DepositService:
                 and_(
                     DepositRequest.user_id == user_id,
                     DepositRequest.status == 'pending',
-                    DepositRequest.expires_at > datetime.utcnow()
+                    DepositRequest.expires_at > datetime.now(timezone.utc)
                 )
             )
             .order_by(DepositRequest.created_at.desc())
@@ -91,7 +91,7 @@ class DepositService:
             return False
         
         deposit.status = 'completed'
-        deposit.completed_at = datetime.utcnow()
+        deposit.completed_at = datetime.now(timezone.utc)
         
         await session.commit()
         return True
@@ -104,7 +104,7 @@ class DepositService:
             .where(
                 and_(
                     DepositRequest.status == 'pending',
-                    DepositRequest.expires_at <= datetime.utcnow()
+                    DepositRequest.expires_at <= datetime.now(timezone.utc)
                 )
             )
         )

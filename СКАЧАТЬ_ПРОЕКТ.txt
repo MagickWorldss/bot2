@@ -1,0 +1,17 @@
+КЛОНИРОВАНИЕ ПРОЕКТА С GITHUB
+================================
+
+В Git Bash выполните:
+
+cd /c/chuwi/dev
+git clone https://github.com/MagickWorldss/bot2.git
+cd bot2
+
+Или если папка уже существует:
+
+cd /c/chuwi/dev/tg/bot2
+git init
+git remote add origin https://github.com/MagickWorldss/bot2
+git fetch origin
+git pull origin main --allow-unrelated-histories
+

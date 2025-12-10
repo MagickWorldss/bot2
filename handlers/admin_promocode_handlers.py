@@ -1,6 +1,6 @@
 """Admin handlers for promocode management."""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -164,7 +164,7 @@ async def promocode_receive_max_uses(message: Message, state: FSMContext, user: 
         data = await state.get_data()
         
         # Create promocode
-        valid_until = datetime.utcnow() + timedelta(days=30)  # 30 days default
+        valid_until = datetime.now(timezone.utc) + timedelta(days=30)  # 30 days default
         
         promocode = await promocode_service.create_promocode(
             session=session,

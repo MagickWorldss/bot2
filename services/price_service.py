@@ -1,7 +1,7 @@
 """Price service for getting SOL/EUR rate."""
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import aiohttp
 from pycoingecko import CoinGeckoAPI
@@ -27,7 +27,7 @@ class PriceService:
         """
         # Check if we have cached rate (less than 60 seconds old)
         if self.current_rate and self.last_update:
-            if datetime.utcnow() - self.last_update < timedelta(seconds=self.update_interval):
+            if datetime.now(timezone.utc) - self.last_update < timedelta(seconds=self.update_interval):
                 return self.current_rate
         
         try:
@@ -40,7 +40,7 @@ class PriceService:
             
             rate = price_data['solana']['eur']
             self.current_rate = rate
-            self.last_update = datetime.utcnow()
+            self.last_update = datetime.now(timezone.utc)
             
             logger.info(f"Updated SOL/EUR rate: {rate}")
             return rate

@@ -1,6 +1,6 @@
 """Transaction service for managing financial operations."""
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database.models import Transaction
@@ -54,7 +54,7 @@ class TransactionService:
             transaction.tx_hash = tx_hash
         
         if status == 'completed':
-            transaction.completed_at = datetime.utcnow()
+            transaction.completed_at = datetime.now(timezone.utc)
         
         await session.commit()
         return True

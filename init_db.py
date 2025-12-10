@@ -164,7 +164,7 @@ async def init_db_data(session):
 async def init_default_quests(session: AsyncSession):
     """Initialize default quests."""
     from database.models import Quest
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     
     # Check if quests already exist
     stmt = select(Quest)
@@ -177,7 +177,7 @@ async def init_default_quests(session: AsyncSession):
     
     logger.info("Создаю стандартные квесты...")
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # 1. Daily quest
     daily_quest = Quest(

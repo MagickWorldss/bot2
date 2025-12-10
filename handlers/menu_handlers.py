@@ -383,9 +383,9 @@ async def fortune_wheel_callback(callback: CallbackQuery, user: User, session: A
         await session.commit()
     
     # Mark as used (use daily bonus timestamp)
-    from datetime import datetime
+    from datetime import datetime, timezone
     stmt = update(UserModel).where(UserModel.id == user.id).values(
-        last_daily_bonus=datetime.utcnow()
+        last_daily_bonus=datetime.now(timezone.utc)
     )
     await session.execute(stmt)
     await session.commit()

@@ -1,6 +1,6 @@
 """Promocode service."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import Promocode, PromocodeUsage
@@ -60,7 +60,7 @@ class PromocodeService:
             return False, "❌ Промокод деактивирован", None
         
         # Check dates
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if promocode.valid_from and now < promocode.valid_from:
             return False, "❌ Промокод еще не активен", None
         if promocode.valid_until and now > promocode.valid_until:

@@ -1,6 +1,6 @@
 """Daily bonus service."""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from database.models import User
@@ -33,7 +33,7 @@ class DailyBonusService:
         if not user:
             return {'success': False, 'message': 'User not found'}
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         last_claim = user.last_daily_bonus
         
         # Check if already claimed today
@@ -96,7 +96,7 @@ class DailyBonusService:
             }
         
         last_claim, streak, points = row
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         if not last_claim:
             can_claim = True
