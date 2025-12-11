@@ -25,6 +25,13 @@ class AddRoulettePrizeStates(StatesGroup):
     waiting_for_probability = State()
 
 
+class EditRoulettePrizeStates(StatesGroup):
+    """States for editing roulette prize."""
+    waiting_for_name = State()
+    waiting_for_value = State()
+    waiting_for_probability = State()
+
+
 def admin_roulette_menu_keyboard():
     """Roulette management menu."""
     from aiogram.utils.keyboard import InlineKeyboardBuilder
