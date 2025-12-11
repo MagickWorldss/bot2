@@ -216,3 +216,20 @@ async def back_to_support_callback(callback: CallbackQuery, user: User, session:
     await support_menu(callback.message, user, session)
     await callback.message.delete()
 
+
+@router.callback_query(F.data == "back_to_main")
+async def back_to_main_callback(callback: CallbackQuery, user: User):
+    """Return to main menu."""
+    from utils.keyboards import main_menu_keyboard
+    keyboard = main_menu_keyboard(user_role=user.role)
+    try:
+        await callback.message.edit_text(
+            "📱 **Главное меню**",
+            reply_markup=keyboard
+        )
+    except Exception:
+        await callback.message.answer(
+            "📱 **Главное меню**",
+            reply_markup=keyboard
+        )
+    await callback.answer()

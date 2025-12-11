@@ -167,42 +167,127 @@ async def view_district_products(callback: CallbackQuery, user: User, session: A
 @router.callback_query(F.data == "back_to_shop_menu")
 async def back_to_shop_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to shop menu."""
-    await show_shop_menu(callback.message, user, session)
+    from services.price_service import price_service
+    balance_eur = user.balance_eur
+    
+    text = f"""
+🛍 **Магазин**
+
+Выберите раздел:
+
+━━━━━━━━━━━━━━━━━━━━
+
+🛍 **Каталог товаров**
+Цифровые товары за деньги
+• Товары по региону (Литва)
+• Оплата: € (евро)
+• Моментальная покупка
+
+🎁 **Стафф (за баллы)**
+Эксклюзивные товары за баллы
+• Промокоды, бонусы, контент
+• Оплата: ✨ баллы
+• Нельзя купить за деньги!
+
+━━━━━━━━━━━━━━━━━━━━
+
+💶 Ваш баланс: {price_service.format_eur(balance_eur)}
+✨ Ваши баллы: **{user.achievement_points}**
+    """
+    
+    try:
+        await callback.message.edit_text(
+            text, 
+            reply_markup=shop_menu_keyboard(user_role=user.role), 
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await callback.message.answer(
+            text, 
+            reply_markup=shop_menu_keyboard(user_role=user.role), 
+            parse_mode="Markdown"
+        )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "change_region_menu")
 async def change_region_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Change region from shop menu."""
     from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from utils.keyboards import regions_keyboard
     
     regions = await LocationService.get_all_regions(session)
     
+    if not regions:
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        try:
+            await callback.message.edit_text(
+                "❌ Регионы еще не добавлены. Попробуйте позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
+        except Exception:
+            await callback.message.answer(
+                "❌ Регионы еще не добавлены. Попробуйте позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
+        await callback.answer("❌ Регионы не найдены", show_alert=True)
+        return
+    
+    # Create keyboard with regions and back button
     builder = InlineKeyboardBuilder()
     for region in regions:
         builder.button(
             text=f"{region.name}",
-            callback_data=f"region_{region.id}"  # Исправлено: используем существующий handler
+            callback_data=f"region_{region.id}"
         )
-    builder.adjust(1)
+    builder.button(text="🔙 Назад в магазин", callback_data="back_to_shop_menu")
+    builder.adjust(2, 1)
     
-    await callback.message.edit_text(
-        "📍 **Выберите регион:**",
-        parse_mode="Markdown",
-        reply_markup=builder.as_markup()
-    )
+    try:
+        await callback.message.edit_text(
+            "📍 **Выберите ваш регион:**",
+            parse_mode="Markdown",
+            reply_markup=builder.as_markup()
+        )
+    except Exception:
+        await callback.message.answer(
+            "📍 **Выберите ваш регион:**",
+            parse_mode="Markdown",
+            reply_markup=builder.as_markup()
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "catalog_menu")
-async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncSession, state: FSMContext):
     """Show catalog from menu."""
     # Check if user selected location
     if not user.city_id:
-        await callback.message.edit_text(
-            "⚠️ **Сначала выберите ваш регион!**\n\n"
-            "Используйте: 👤 Профиль → настройте локацию",
-            parse_mode="Markdown"
-        )
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        builder = InlineKeyboardBuilder()
+        builder.button(text="📍 Изменить регион", callback_data="change_region_menu")
+        builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        try:
+            await callback.message.edit_text(
+                "⚠️ **Сначала выберите ваш регион!**\n\n"
+                "Используйте кнопку ниже для выбора региона.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
+        except Exception:
+            await callback.message.answer(
+                "⚠️ **Сначала выберите ваш регион!**\n\n"
+                "Используйте кнопку ниже для выбора региона.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
         await callback.answer("⚠️ Выберите регион!", show_alert=True)
         return
     
@@ -215,11 +300,25 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     )
     
     if not images:
-        await callback.message.edit_text(
-            "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
-            "Попробуйте зайти позже.",
-            parse_mode="Markdown"
-        )
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        try:
+            await callback.message.edit_text(
+                "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
+                "Попробуйте зайти позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
+        except Exception:
+            await callback.message.answer(
+                "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
+                "Попробуйте зайти позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
         await callback.answer()
         return
     
@@ -229,6 +328,9 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     
     page_size = 5
     current_page, total_pages = paginate_list(images, 0, page_size)
+    
+    # Save state for pagination
+    await state.update_data(catalog_page=0)
     
     # Load location manually (no relationships in User model)
     region_name = "не указан"
@@ -243,24 +345,105 @@ async def catalog_from_menu(callback: CallbackQuery, user: User, session: AsyncS
     catalog_text = f"🛍 **Каталог товаров**\n\n"
     catalog_text += f"📍 Ваш регион: {region_name}\n"
     catalog_text += f"🏙 Ваш город: {city_name}\n\n"
-    catalog_text += f"Найдено товаров: **{len(images)}**\n\n"
+    catalog_text += f"Найдено товаров: **{len(images)}**\n"
+    catalog_text += f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
     catalog_text += "Выберите товар для просмотра:"
     
     keyboard = catalog_keyboard(current_page, page=0, total_pages=total_pages)
     
-    await callback.message.edit_text(
-        catalog_text,
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    try:
+        await callback.message.edit_text(
+            catalog_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await callback.message.answer(
+            catalog_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
     await callback.answer()
 
 
 @router.callback_query(F.data == "staff_menu")
 async def staff_from_menu(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show staff shop from menu."""
-    from handlers.staff_handlers import show_staff_shop
-    await show_staff_shop(callback.message, user, session)
+    from services.staff_service import staff_service
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    # Get all active items
+    items = await staff_service.get_all_items(session, active_only=True)
+    
+    if not items:
+        text = """
+🎁 **Магазин за баллы**
+
+📭 Пока нет доступных товаров
+
+━━━━━━━━━━━━━━━━━━━━
+
+💡 Здесь появятся эксклюзивные товары,
+которые можно купить за баллы!
+
+Баллы можно получить:
+• Ежедневный бонус
+• Достижения
+• Квесты
+• Квизы
+• Акции
+        """
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        try:
+            await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        except Exception:
+            await callback.message.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        await callback.answer()
+        return
+    
+    text = f"""
+🎁 **Магазин за баллы**
+
+✨ Ваши баллы: **{user.achievement_points}**
+
+━━━━━━━━━━━━━━━━━━━━
+
+**Доступные товары:**
+
+"""
+    
+    builder = InlineKeyboardBuilder()
+    
+    for item in items:
+        # Check stock
+        available = item.stock_count - item.sold_count
+        stock_text = f"(осталось: {available})" if available > 0 else "(нет в наличии)"
+        
+        text += f"🎁 **{item.name}**\n"
+        text += f"   💰 {item.price_points} баллов {stock_text}\n"
+        if item.description:
+            text += f"   _{item.description}_\n"
+        text += "\n"
+        
+        if available > 0:
+            builder.button(
+                text=f"🎁 {item.name} - {item.price_points} баллов",
+                callback_data=f"buy_staff_{item.id}"
+            )
+    
+    builder.button(text="🔙 Назад", callback_data="back_to_shop_menu")
+    builder.adjust(1)
+    
+    text += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    text += "💡 Нажмите на товар чтобы купить"
+    
+    try:
+        await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=builder.as_markup())
+    except Exception:
+        await callback.message.answer(text, parse_mode="Markdown", reply_markup=builder.as_markup())
     await callback.answer()
 
 

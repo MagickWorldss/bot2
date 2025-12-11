@@ -256,6 +256,8 @@ def catalog_keyboard(
         
         builder.row(*nav_buttons)
     
+    # Back button
+    builder.button(text="🔙 Назад в магазин", callback_data="back_to_shop_menu")
     builder.adjust(1)
     return builder.as_markup()
 
@@ -270,6 +272,10 @@ def image_view_keyboard(image_id: int, price: float) -> InlineKeyboardMarkup:
     builder.button(
         text="◀️ Назад к каталогу",
         callback_data="back_to_catalog"
+    )
+    builder.button(
+        text="🔙 В меню магазина",
+        callback_data="back_to_shop_menu"
     )
     builder.adjust(1)
     return builder.as_markup()

@@ -82,13 +82,26 @@ async def catalog_page(
     # Update state
     await state.update_data(catalog_page=page)
     
+    # Load location names
+    region_name = "не указан"
+    city_name = "не указан"
+    if user.region_id and user.city_id:
+        region = await LocationService.get_region_by_id(session, user.region_id)
+        city = await LocationService.get_city_by_id(session, user.city_id)
+        region_name = region.name if region else "не указан"
+        city_name = city.name if city else "не указан"
+    
     keyboard = catalog_keyboard(page_images, page=page, total_pages=total_pages)
     
+    catalog_text = f"🛍 **Каталог товаров**\n\n"
+    catalog_text += f"📍 Ваш регион: {region_name}\n"
+    catalog_text += f"🏙 Ваш город: {city_name}\n\n"
+    catalog_text += f"Найдено товаров: **{len(images)}**\n"
+    catalog_text += f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
+    catalog_text += "Выберите товар для просмотра:"
+    
     await callback.message.edit_text(
-        f"🛍 **Каталог товаров**\n\n"
-        f"Найдено товаров: {len(images)}\n"
-        f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
-        f"Выберите товар для просмотра:",
+        catalog_text,
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -165,7 +178,17 @@ async def back_to_catalog(
     state: FSMContext
 ):
     """Go back to catalog."""
-    # Get current page from state
+    # Check if user selected location
+    if not user.city_id:
+        await callback.message.edit_text(
+            "⚠️ **Сначала выберите ваш регион!**\n\n"
+            "Используйте: 👤 Профиль → настройте локацию",
+            parse_mode="Markdown"
+        )
+        await callback.answer("⚠️ Выберите регион!", show_alert=True)
+        return
+    
+    # Get current page from state (default to 0)
     data = await state.get_data()
     page = data.get('catalog_page', 0)
     
@@ -177,33 +200,62 @@ async def back_to_catalog(
     )
     
     if not images:
-        await callback.message.edit_text(
-            "😔 К сожалению, в вашем регионе сейчас нет доступных товаров."
-        )
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🔙 Назад в магазин", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
+        try:
+            await callback.message.edit_text(
+                "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
+                "Попробуйте зайти позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
+        except Exception:
+            await callback.message.answer(
+                "😔 К сожалению, в вашем регионе сейчас нет доступных товаров.\n\n"
+                "Попробуйте зайти позже.",
+                parse_mode="Markdown",
+                reply_markup=builder.as_markup()
+            )
         await callback.answer()
         return
     
     # Paginate
     page_images, total_pages = paginate_list(images, page, items_per_page=5)
     
+    # Update state
+    await state.update_data(catalog_page=page)
+    
     keyboard = catalog_keyboard(page_images, page=page, total_pages=total_pages)
+    
+    # Load location names
+    region_name = "не указан"
+    city_name = "не указан"
+    if user.region_id and user.city_id:
+        region = await LocationService.get_region_by_id(session, user.region_id)
+        city = await LocationService.get_city_by_id(session, user.city_id)
+        region_name = region.name if region else "не указан"
+        city_name = city.name if city else "не указан"
+    
+    catalog_text = f"🛍 **Каталог товаров**\n\n"
+    catalog_text += f"📍 Ваш регион: {region_name}\n"
+    catalog_text += f"🏙 Ваш город: {city_name}\n\n"
+    catalog_text += f"Найдено товаров: **{len(images)}**\n"
+    catalog_text += f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
+    catalog_text += "Выберите товар для просмотра:"
     
     try:
         await callback.message.edit_text(
-            f"🛍 **Каталог товаров**\n\n"
-            f"Найдено товаров: {len(images)}\n"
-            f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
-            f"Выберите товар для просмотра:",
+            catalog_text,
             reply_markup=keyboard,
             parse_mode="Markdown"
         )
     except Exception:
         # If message can't be edited (e.g., it's a photo), send new message
         await callback.message.answer(
-            f"🛍 **Каталог товаров**\n\n"
-            f"Найдено товаров: {len(images)}\n"
-            f"💶 Ваш баланс: €{user.balance_eur:.2f}\n\n"
-            f"Выберите товар для просмотра:",
+            catalog_text,
             reply_markup=keyboard,
             parse_mode="Markdown"
         )
@@ -357,11 +409,67 @@ async def confirm_purchase(callback: CallbackQuery, user: User, session: AsyncSe
 
 
 @router.callback_query(F.data == "cancel_purchase")
-async def cancel_purchase(callback: CallbackQuery):
-    """Cancel purchase."""
-    await callback.message.edit_caption(
-        caption="❌ Покупка отменена."
-    )
+async def cancel_purchase(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Cancel purchase and return to image view."""
+    # Try to get image_id from message caption
+    import re
+    caption = callback.message.caption or ""
+    
+    # Extract image_id from caption (format: "Товар: #123")
+    match = re.search(r'Товар:\s*#(\d+)', caption)
+    if match:
+        image_id = int(match.group(1))
+        # Return to image view
+        image = await ImageService.get_image_by_id(session, image_id)
+        if image and not image.is_sold:
+            from utils.keyboards import image_view_keyboard
+            from utils.preview_categories import format_category_display
+            
+            region = await LocationService.get_region_by_id(session, image.region_id)
+            city = await LocationService.get_city_by_id(session, image.city_id)
+            
+            region_name = region.name if region else 'N/A'
+            city_name = city.name if city else 'N/A'
+            
+            description = f"""
+🖼 **Товар #{image.id}**
+
+📂 Категория: {format_category_display(image.category) if image.category else 'Не указана'}
+📍 Регион: {region_name}
+🏙 Город: {city_name}
+
+💶 Цена: €{image.price_sol:.2f}
+💰 Ваш баланс: €{user.balance_eur:.2f}
+"""
+            
+            if image.description:
+                description += f"\n📝 Описание: {image.description}"
+            
+            keyboard = image_view_keyboard(image_id, image.price_sol)
+            
+            try:
+                await callback.message.edit_caption(
+                    caption=description,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                await callback.message.answer(
+                    description,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+            await callback.answer("❌ Покупка отменена")
+            return
+    
+    # Fallback: just show cancel message
+    try:
+        await callback.message.edit_caption(
+            caption="❌ Покупка отменена.\n\nИспользуйте кнопку '◀️ Назад к каталогу' для возврата.",
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await callback.message.answer("❌ Покупка отменена.")
     await callback.answer()
 
 

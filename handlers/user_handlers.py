@@ -239,10 +239,22 @@ async def select_region_callback(
         )
         return
     
-    keyboard = cities_keyboard(cities, back_to_regions=True)
+    # Create keyboard with cities and back button
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    for city in cities:
+        builder.button(
+            text=f"{city.name}",
+            callback_data=f"city_{city.id}"
+        )
+    builder.button(text="◀️ Назад к регионам", callback_data="back_to_regions")
+    builder.button(text="🔙 В меню магазина", callback_data="back_to_shop_menu")
+    builder.adjust(2, 1, 1)
+    
     await callback.message.edit_text(
-        "🏙 Выберите ваш город:",
-        reply_markup=keyboard
+        "🏙 **Выберите ваш город:**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
     )
     await callback.answer()
 
@@ -273,20 +285,39 @@ async def select_city_callback(
         # Load region manually
         region = await LocationService.get_region_by_id(session, city.region_id)
         
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🛍 Перейти в каталог", callback_data="catalog_menu")
+        builder.button(text="🔙 В меню магазина", callback_data="back_to_shop_menu")
+        builder.adjust(1)
+        
         await callback.message.edit_text(
-            f"✅ Вы выбрали: {region.name if region else 'N/A'}, {city.name}\n\n"
-            f"Теперь вы можете просмотреть каталог товаров."
+            f"✅ **Локация сохранена!**\n\n"
+            f"🌍 Регион: {region.name if region else 'N/A'}\n"
+            f"🏙 Город: {city.name}\n\n"
+            f"Теперь вы можете просмотреть каталог товаров.",
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
         )
         await callback.answer("✅ Локация сохранена!")
         return
     
-    # Show districts
-    from utils.keyboards import districts_keyboard
-    keyboard = districts_keyboard(districts, back_callback=f"region_{city.region_id}")
+    # Show districts with back buttons
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    for district in districts:
+        builder.button(
+            text=f"📍 {district.name}",
+            callback_data=f"district_{district.id}"
+        )
+    builder.button(text="◀️ Назад к городам", callback_data=f"region_{city.region_id}")
+    builder.button(text="🔙 В меню магазина", callback_data="back_to_shop_menu")
+    builder.adjust(2, 1, 1)
     
     await callback.message.edit_text(
-        f"📍 Выберите микрорайон в городе {city.name}:",
-        reply_markup=keyboard
+        f"📍 **Выберите микрорайон в городе {city.name}:**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
     )
     await callback.answer()
 
@@ -323,12 +354,20 @@ async def select_district_callback(
     await session.execute(stmt)
     await session.commit()
     
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🛍 Перейти в каталог", callback_data="catalog_menu")
+    builder.button(text="🔙 В меню магазина", callback_data="back_to_shop_menu")
+    builder.adjust(1)
+    
     await callback.message.edit_text(
-        f"✅ Вы выбрали:\n"
-        f"🌍 {region.name}\n"
-        f"🏙 {city.name}\n"
-        f"📍 {district.name}\n\n"
-        f"Теперь вы можете просмотреть каталог товаров для вашего микрорайона."
+        f"✅ **Локация сохранена!**\n\n"
+        f"🌍 Регион: {region.name}\n"
+        f"🏙 Город: {city.name}\n"
+        f"📍 Микрорайон: {district.name}\n\n"
+        f"Теперь вы можете просмотреть каталог товаров для вашего микрорайона.",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
     )
     await callback.answer("✅ Локация сохранена!")
 
@@ -342,6 +381,47 @@ async def back_to_regions(callback: CallbackQuery, session: AsyncSession):
     await callback.message.edit_text(
         "📍 Выберите ваш регион:",
         reply_markup=keyboard
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "back_to_cities")
+async def back_to_cities(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Go back to city selection."""
+    # Try to get region_id from user or from callback data
+    if user.region_id:
+        region_id = user.region_id
+    else:
+        # Try to extract from previous context - if not available, show regions
+        regions = await LocationService.get_all_regions(session)
+        if regions:
+            region_id = regions[0].id
+        else:
+            await callback.answer("❌ Регионы не найдены", show_alert=True)
+            return
+    
+    cities = await LocationService.get_cities_by_region(session, region_id)
+    
+    if not cities:
+        await callback.answer("❌ В этом регионе нет городов", show_alert=True)
+        return
+    
+    # Create keyboard with cities and back button
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    builder = InlineKeyboardBuilder()
+    for city in cities:
+        builder.button(
+            text=f"{city.name}",
+            callback_data=f"city_{city.id}"
+        )
+    builder.button(text="◀️ Назад к регионам", callback_data="back_to_regions")
+    builder.button(text="🔙 В меню магазина", callback_data="back_to_shop_menu")
+    builder.adjust(2, 1, 1)
+    
+    await callback.message.edit_text(
+        "🏙 **Выберите ваш город:**",
+        reply_markup=builder.as_markup(),
+        parse_mode="Markdown"
     )
     await callback.answer()
 

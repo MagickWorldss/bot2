@@ -215,6 +215,7 @@ async def delete_product(callback: CallbackQuery, user: User, session: AsyncSess
 @router.callback_query(F.data == "back_to_my_products")
 async def back_to_my_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to products list."""
+    # Call my_products function
     await my_products(callback, user, session)
 
 
@@ -253,10 +254,47 @@ async def seller_add_product_start(callback: CallbackQuery, user: User, session:
 @router.callback_query(F.data == "back_to_shop_from_products")
 async def back_to_shop_from_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Return to shop menu."""
-    from handlers.menu_handlers import show_shop_menu
-    await callback.message.delete()
-    # Send new message with shop menu
-    from aiogram.types import Message as Msg
-    fake_message = callback.message
-    await show_shop_menu(fake_message, user, session)
+    from services.price_service import price_service
+    from utils.keyboards import shop_menu_keyboard
+    
+    balance_eur = user.balance_eur
+    
+    text = f"""
+🛍 **Магазин**
+
+Выберите раздел:
+
+━━━━━━━━━━━━━━━━━━━━
+
+🛍 **Каталог товаров**
+Цифровые товары за деньги
+• Товары по региону (Литва)
+• Оплата: € (евро)
+• Моментальная покупка
+
+🎁 **Стафф (за баллы)**
+Эксклюзивные товары за баллы
+• Промокоды, бонусы, контент
+• Оплата: ✨ баллы
+• Нельзя купить за деньги!
+
+━━━━━━━━━━━━━━━━━━━━
+
+💶 Ваш баланс: {price_service.format_eur(balance_eur)}
+✨ Ваши баллы: **{user.achievement_points}**
+    """
+    
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=shop_menu_keyboard(user_role=user.role),
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await callback.message.answer(
+            text,
+            reply_markup=shop_menu_keyboard(user_role=user.role),
+            parse_mode="Markdown"
+        )
+    await callback.answer()
 

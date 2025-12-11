@@ -2551,3 +2551,49 @@ async def admin_delete_category(callback: CallbackQuery, user: User, session: As
     except Exception as e:
         logger.error(f"Error deleting category: {e}", exc_info=True)
         await callback.answer("❌ Ошибка при удалении категории.", show_alert=True)
+
+
+# ==================== BACK BUTTONS ====================
+
+@router.callback_query(F.data == "back_to_admin")
+async def back_to_admin(callback: CallbackQuery, user: User):
+    """Return to admin menu."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    admin_text = """
+👑 **GOD Mode**
+
+Добро пожаловать в режим администратора!
+Выберите действие:
+    """
+    
+    keyboard = admin_menu_keyboard()
+    try:
+        await callback.message.edit_text(admin_text, reply_markup=keyboard, parse_mode="Markdown")
+    except Exception:
+        await callback.message.answer(admin_text, reply_markup=keyboard, parse_mode="Markdown")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_back_to_menu")
+async def admin_back_to_menu(callback: CallbackQuery, user: User):
+    """Return to admin menu from category management."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    admin_text = """
+👑 **GOD Mode**
+
+Добро пожаловать в режим администратора!
+Выберите действие:
+    """
+    
+    keyboard = admin_menu_keyboard()
+    try:
+        await callback.message.edit_text(admin_text, reply_markup=keyboard, parse_mode="Markdown")
+    except Exception:
+        await callback.message.answer(admin_text, reply_markup=keyboard, parse_mode="Markdown")
+    await callback.answer()
