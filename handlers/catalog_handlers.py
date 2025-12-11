@@ -489,11 +489,18 @@ async def purchase_history(message: Message, user: User, session: AsyncSession):
         await session.refresh(purchase, ['image'])
         image = purchase.image
         
+        # Load location manually (no relationships in Image model)
+        region = await LocationService.get_region_by_id(session, image.region_id)
+        city = await LocationService.get_city_by_id(session, image.city_id)
+        
+        region_name = region.name if region else 'N/A'
+        city_name = city.name if city else 'N/A'
+        
         history_text += (
             f"🖼 Товар #{image.id}\n"
-            f"💰 Цена: {format_sol_amount(purchase.price_paid_sol)}\n"
+            f"💰 Цена: €{purchase.price_sol:.2f}\n"
             f"📅 Дата: {purchase.created_at.strftime('%d.%m.%Y %H:%M')}\n"
-            f"📍 {image.region.name}, {image.city.name}\n\n"
+            f"📍 {region_name}, {city_name}\n\n"
         )
     
     await message.answer(history_text, parse_mode="Markdown")

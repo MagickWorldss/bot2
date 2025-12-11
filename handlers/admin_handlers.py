@@ -1963,6 +1963,13 @@ async def admin_category_actions(callback: CallbackQuery, user: User, session: A
     
     status = "✅ Активна" if category.is_active else "❌ Неактивна"
     
+    # Format dates separately to avoid backslash in f-string
+    created_date = category.created_at.strftime('%d.%m.%Y %H:%M')
+    updated_text = ''
+    if category.updated_at:
+        updated_date = category.updated_at.strftime('%d.%m.%Y %H:%M')
+        updated_text = f"Обновлена: {updated_date}\n\n"
+    
     await callback.message.edit_text(
         f"📂 **Категория: {category.name}**\n\n"
         f"ID: #{category.id}\n"
@@ -1971,8 +1978,8 @@ async def admin_category_actions(callback: CallbackQuery, user: User, session: A
         f"Описание: {category.description or 'Нет описания'}\n"
         f"Порядок сортировки: {category.sort_order}\n"
         f"Статус: {status}\n"
-        f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n"
-        f"{f'Обновлена: {category.updated_at.strftime(\"%d.%m.%Y %H:%M\")}' if category.updated_at else ''}\n\n"
+        f"Создана: {created_date}\n"
+        f"{updated_text}"
         f"**Выберите что редактировать:**",
         reply_markup=admin_category_actions_keyboard(category_id, category.is_active),
         parse_mode="Markdown"
@@ -2462,6 +2469,13 @@ async def admin_toggle_category(callback: CallbackQuery, user: User, session: As
             category = await category_service.get_category_by_id(session, category_id)
             status_text = "активирована" if new_status else "деактивирована"
             
+            # Format dates separately to avoid backslash in f-string
+            created_date = category.created_at.strftime('%d.%m.%Y %H:%M')
+            updated_text = ''
+            if category.updated_at:
+                updated_date = category.updated_at.strftime('%d.%m.%Y %H:%M')
+                updated_text = f"Обновлена: {updated_date}\n\n"
+            
             await callback.message.edit_text(
                 f"✅ **Категория {status_text}!**\n\n"
                 f"📂 **Категория: {category.name}**\n\n"
@@ -2471,8 +2485,8 @@ async def admin_toggle_category(callback: CallbackQuery, user: User, session: As
                 f"Описание: {category.description or 'Нет описания'}\n"
                 f"Порядок сортировки: {category.sort_order}\n"
                 f"Статус: {'✅ Активна' if category.is_active else '❌ Неактивна'}\n"
-                f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n"
-                f"{f'Обновлена: {category.updated_at.strftime(\"%d.%m.%Y %H:%M\")}' if category.updated_at else ''}\n\n"
+                f"Создана: {created_date}\n"
+                f"{updated_text}"
                 f"**Выберите что редактировать:**",
                 reply_markup=admin_category_actions_keyboard(category_id, category.is_active),
                 parse_mode="Markdown"
