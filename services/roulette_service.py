@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
-from database.models import RoulettePrize, UserRouletteSpin, User
+from database.models import RoulettePrize, UserRouletteSpin, User, UserCoupon
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,19 @@ class RouletteService:
         return spin is None
     
     @staticmethod
-    async def get_active_prizes(session: AsyncSession) -> list[RoulettePrize]:
-        """Get all active prizes."""
+    async def get_active_prizes(session: AsyncSession, user_id: int = None) -> list[RoulettePrize]:
+        """Get all active prizes. Exclude discount_coupon if user already has active coupon."""
         stmt = select(RoulettePrize).where(RoulettePrize.is_active == True)
         result = await session.execute(stmt)
-        return list(result.scalars().all())
+        prizes = list(result.scalars().all())
+        
+        # Если указан user_id, исключаем купон если у пользователя уже есть активный
+        if user_id:
+            has_active_coupon = await RouletteService.has_active_coupon(session, user_id)
+            if has_active_coupon:
+                prizes = [p for p in prizes if p.prize_type != 'discount_coupon']
+        
+        return prizes
     
     @staticmethod
     async def spin_wheel(session: AsyncSession, user_id: int) -> dict:
@@ -40,14 +48,18 @@ class RouletteService:
         if not await RouletteService.can_spin_today(session, user_id):
             return {'success': False, 'error': 'already_spun_today'}
         
-        # Get active prizes
-        prizes = await RouletteService.get_active_prizes(session)
+        # Get active prizes (excluding discount_coupon if user has active one)
+        prizes = await RouletteService.get_active_prizes(session, user_id)
         
         if not prizes:
             return {'success': False, 'error': 'no_prizes'}
         
-        # Select prize based on probability
+        # Normalize probabilities if needed (ensure they sum to 1.0)
         total_prob = sum(p.probability for p in prizes)
+        if total_prob == 0:
+            return {'success': False, 'error': 'no_prizes'}
+        
+        # Select prize based on probability
         rand = random.uniform(0, total_prob)
         
         current_prob = 0
@@ -99,6 +111,16 @@ class RouletteService:
             user.balance_eur += prize.prize_value
         elif prize.prize_type == 'points':
             user.achievement_points += int(prize.prize_value)
+        elif prize.prize_type == 'discount_coupon':
+            # Create coupon with 10 days expiration
+            expires_at = datetime.now(timezone.utc) + timedelta(days=10)
+            coupon = UserCoupon(
+                user_id=user_id,
+                max_discount=prize.prize_value,  # 30.00 EUR
+                expires_at=expires_at
+            )
+            session.add(coupon)
+            logger.info(f"Coupon created for user {user_id}: {prize.prize_value} EUR, expires {expires_at}")
         elif prize.prize_type == 'nothing':
             pass  # No prize
         
@@ -185,6 +207,43 @@ class RouletteService:
             logger.info(f"Roulette prize {prize_id} status toggled to {prize.is_active}")
             return True
         return False
+    
+    @staticmethod
+    async def has_active_coupon(session: AsyncSession, user_id: int) -> bool:
+        """Check if user has active (not used, not expired) coupon."""
+        now = datetime.now(timezone.utc)
+        stmt = select(UserCoupon).where(
+            UserCoupon.user_id == user_id,
+            UserCoupon.is_used == False,
+            UserCoupon.expires_at > now
+        )
+        result = await session.execute(stmt)
+        coupon = result.scalars().first()
+        return coupon is not None
+    
+    @staticmethod
+    async def get_user_active_coupon(session: AsyncSession, user_id: int) -> UserCoupon | None:
+        """Get user's active coupon if exists."""
+        now = datetime.now(timezone.utc)
+        stmt = select(UserCoupon).where(
+            UserCoupon.user_id == user_id,
+            UserCoupon.is_used == False,
+            UserCoupon.expires_at > now
+        ).order_by(UserCoupon.created_at.desc())
+        result = await session.execute(stmt)
+        return result.scalars().first()
+    
+    @staticmethod
+    async def validate_nothing_prize_count(session: AsyncSession) -> tuple[bool, int]:
+        """Validate that there is only one active 'nothing' prize. Returns (is_valid, count)."""
+        stmt = select(RoulettePrize).where(
+            RoulettePrize.prize_type == 'nothing',
+            RoulettePrize.is_active == True
+        )
+        result = await session.execute(stmt)
+        nothing_prizes = list(result.scalars().all())
+        count = len(nothing_prizes)
+        return (count <= 1, count)
 
 
 # Global instance

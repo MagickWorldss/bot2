@@ -82,10 +82,14 @@ async def admin_roulette_menu(callback: CallbackQuery, user: User):
         "• `eur` - EUR (баланс)\n"
         "• `points` - Баллы\n"
         "• `promocode` - Промокод\n"
-        "• `nothing` - Ничего\n\n"
+        "• `discount_coupon` - Купон на покупку (макс. скидка в EUR)\n"
+        "• `nothing` - Ничего (проигрыш)\n\n"
+        "**⚠️ ВАЖНО:**\n"
+        "• Проигрышный приз (`nothing`) может быть только **ОДИН**!\n"
+        "• Вероятности всех призов должны суммироваться в 100%\n"
+        "• Купон не выпадет пользователю, если у него уже есть активный купон\n\n"
         "**Вероятность:**\n"
-        "Число от 0.0 до 1.0\n"
-        "Например: 0.3 = 30% шанс",
+        "Число от 0.0 до 1.0 (например: 0.15 = 15%)",
         reply_markup=admin_roulette_menu_keyboard(),
         parse_mode="Markdown"
     )
@@ -141,6 +145,7 @@ async def admin_prize_actions(callback: CallbackQuery, user: User, session: Asyn
         'eur': 'EUR',
         'points': 'Баллы',
         'promocode': 'Промокод',
+        'discount_coupon': 'Купон на покупку',
         'nothing': 'Ничего'
     }
     
@@ -183,26 +188,55 @@ async def admin_add_prize_name(message: Message, state: FSMContext):
         "• `eur` - EUR (баланс)\n"
         "• `points` - Баллы\n"
         "• `promocode` - Промокод\n"
-        "• `nothing` - Ничего",
+        "• `discount_coupon` - Купон на покупку (макс. скидка в EUR)\n"
+        "• `nothing` - Ничего (проигрыш)\n\n"
+        "⚠️ **ВНИМАНИЕ:** Приз типа `nothing` может быть только **ОДИН**!",
         reply_markup=cancel_inline_keyboard(),
         parse_mode="Markdown"
     )
 
 
 @router.message(AddRoulettePrizeStates.waiting_for_type)
-async def admin_add_prize_type(message: Message, state: FSMContext):
+async def admin_add_prize_type(message: Message, state: FSMContext, session: AsyncSession):
     """Process prize type."""
     prize_type = message.text.lower()
-    if prize_type not in ['eur', 'points', 'promocode', 'nothing']:
-        await message.answer("❌ Неверный тип. Введите: eur, points, promocode или nothing")
+    if prize_type not in ['eur', 'points', 'promocode', 'discount_coupon', 'nothing']:
+        await message.answer("❌ Неверный тип. Введите: eur, points, promocode, discount_coupon или nothing")
         return
+    
+    # Validate that 'nothing' prize can be only one
+    if prize_type == 'nothing':
+        from services.roulette_service import RouletteService
+        is_valid, count = await RouletteService.validate_nothing_prize_count(session)
+        if not is_valid and count > 0:
+            await message.answer(
+                f"❌ **Ошибка!**\n\n"
+                f"Проигрышный приз (`nothing`) уже существует!\n"
+                f"Может быть только **ОДИН** проигрышный приз.\n\n"
+                f"Текущее количество: {count}\n\n"
+                f"Сначала деактивируйте или удалите существующий проигрышный приз.",
+                parse_mode="Markdown"
+            )
+            return
     
     await state.update_data(prize_type=prize_type)
     await state.set_state(AddRoulettePrizeStates.waiting_for_value)
+    
+    # Different prompts for different types
+    if prize_type == 'nothing':
+        value_prompt = "Для 'nothing' введите 0"
+    elif prize_type == 'discount_coupon':
+        value_prompt = "Введите максимальную скидку в EUR (например: 30.00)"
+    elif prize_type == 'eur':
+        value_prompt = "Введите сумму в EUR (например: 10.00)"
+    elif prize_type == 'points':
+        value_prompt = "Введите количество баллов (например: 50)"
+    else:
+        value_prompt = "Введите значение приза"
+    
     await message.answer(
-        "Шаг 3/4: Введите значение приза (число):\n\n"
-        "Например: 10 (для 10 EUR) или 50 (для 50 баллов)\n"
-        "Для 'nothing' введите 0",
+        f"Шаг 3/4: Введите значение приза (число):\n\n"
+        f"{value_prompt}",
         reply_markup=cancel_inline_keyboard()
     )
 
@@ -242,6 +276,19 @@ async def admin_add_prize_probability(message: Message, state: FSMContext, sessi
     # Get all data
     data = await state.get_data()
     
+    # Final validation: check 'nothing' prize count again (in case it was created between steps)
+    if data['prize_type'] == 'nothing':
+        is_valid, count = await RouletteService.validate_nothing_prize_count(session)
+        if not is_valid and count > 0:
+            await message.answer(
+                f"❌ **Ошибка!**\n\n"
+                f"Проигрышный приз (`nothing`) уже существует!\n"
+                f"Может быть только **ОДИН** проигрышный приз.\n\n"
+                f"Текущее количество: {count}",
+                parse_mode="Markdown"
+            )
+            return
+    
     # Create prize
     prize = await RouletteService.create_prize(
         session=session,
@@ -256,6 +303,7 @@ async def admin_add_prize_probability(message: Message, state: FSMContext, sessi
         f"✅ **Приз создан успешно!**\n\n"
         f"**ID:** {prize.id}\n"
         f"**Название:** {prize.name}\n"
+        f"**Тип:** {data['prize_type']}\n"
         f"**Вероятность:** {probability*100:.0f}%",
         reply_markup=admin_menu_keyboard(),
         parse_mode="Markdown"
@@ -265,30 +313,42 @@ async def admin_add_prize_probability(message: Message, state: FSMContext, sessi
 
 
 @router.callback_query(F.data.startswith("admin_activate_roulette_"))
-async def admin_activate_prize(callback: CallbackQuery, session: AsyncSession):
+async def admin_activate_prize(callback: CallbackQuery, user: User, session: AsyncSession):
     """Activate prize."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     prize_id = int(callback.data.split("_")[3])
     await RouletteService.toggle_prize_status(session, prize_id)
     
     # Refresh display
-    await admin_prize_actions(callback, callback.from_user, session)
+    await admin_prize_actions(callback, user, session)
     await callback.answer("✅ Приз активирован")
 
 
 @router.callback_query(F.data.startswith("admin_deactivate_roulette_"))
-async def admin_deactivate_prize(callback: CallbackQuery, session: AsyncSession):
+async def admin_deactivate_prize(callback: CallbackQuery, user: User, session: AsyncSession):
     """Deactivate prize."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     prize_id = int(callback.data.split("_")[3])
     await RouletteService.toggle_prize_status(session, prize_id)
     
     # Refresh display
-    await admin_prize_actions(callback, callback.from_user, session)
+    await admin_prize_actions(callback, user, session)
     await callback.answer("🔴 Приз деактивирован")
 
 
 @router.callback_query(F.data.startswith("admin_delete_roulette_"))
-async def admin_delete_prize(callback: CallbackQuery, session: AsyncSession):
+async def admin_delete_prize(callback: CallbackQuery, user: User, session: AsyncSession):
     """Delete prize."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     prize_id = int(callback.data.split("_")[3])
     success = await RouletteService.delete_prize(session, prize_id)
     
@@ -303,7 +363,7 @@ async def admin_delete_prize(callback: CallbackQuery, session: AsyncSession):
 
 
 @router.callback_query(F.data == "cancel_add_roulette_prize")
-async def cancel_add_prize(callback: CallbackQuery, state: FSMContext):
+async def cancel_add_roulette_prize(callback: CallbackQuery, state: FSMContext):
     """Cancel prize creation."""
     await state.clear()
     await callback.message.edit_text(
@@ -314,4 +374,234 @@ async def cancel_add_prize(callback: CallbackQuery, state: FSMContext):
         reply_markup=admin_menu_keyboard()
     )
     await callback.answer("❌ Отменено")
+
+
+# ==================== EDIT PRIZE HANDLERS ====================
+
+@router.callback_query(F.data.startswith("admin_edit_roulette_name_"))
+async def admin_edit_prize_name_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing prize name."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    prize_id = int(callback.data.split("_")[4])
+    prize = await RouletteService.get_prize_by_id(session, prize_id)
+    
+    if not prize:
+        await callback.answer("❌ Приз не найден", show_alert=True)
+        return
+    
+    await state.update_data(prize_id=prize_id)
+    await state.set_state(EditRoulettePrizeStates.waiting_for_name)
+    
+    await callback.message.edit_text(
+        f"✏️ **Редактирование названия приза**\n\n"
+        f"Текущее название: `{prize.name}`\n\n"
+        f"Введите новое название:",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "cancel_edit_roulette_prize")
+async def cancel_edit_roulette_prize(callback: CallbackQuery, state: FSMContext):
+    """Cancel prize editing."""
+    await state.clear()
+    await callback.message.edit_text(
+        "❌ Редактирование отменено.",
+        reply_markup=admin_roulette_menu_keyboard()
+    )
+    await callback.answer("❌ Отменено")
+
+
+@router.message(EditRoulettePrizeStates.waiting_for_name)
+async def admin_edit_prize_name(message: Message, state: FSMContext, session: AsyncSession):
+    """Process prize name edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    name = message.text.strip()
+    if not name:
+        await message.answer("❌ Название не может быть пустым.")
+        return
+    
+    data = await state.get_data()
+    prize_id = data['prize_id']
+    
+    try:
+        success = await RouletteService.update_prize(
+            session=session,
+            prize_id=prize_id,
+            name=name
+        )
+        
+        if success:
+            await state.clear()
+            await message.answer(
+                f"✅ **Название обновлено!**\n\n"
+                f"Новое название: `{name}`",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            logger.info(f"Roulette prize {prize_id} name updated to: {name}")
+        else:
+            await message.answer("❌ Ошибка при обновлении названия.")
+            
+    except Exception as e:
+        logger.error(f"Error editing prize name: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании названия.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_roulette_value_"))
+async def admin_edit_prize_value_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing prize value."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    prize_id = int(callback.data.split("_")[4])
+    prize = await RouletteService.get_prize_by_id(session, prize_id)
+    
+    if not prize:
+        await callback.answer("❌ Приз не найден", show_alert=True)
+        return
+    
+    await state.update_data(prize_id=prize_id)
+    await state.set_state(EditRoulettePrizeStates.waiting_for_value)
+    
+    await callback.message.edit_text(
+        f"💰 **Редактирование значения приза**\n\n"
+        f"Текущее значение: `{prize.prize_value}`\n\n"
+        f"Введите новое значение (число):",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditRoulettePrizeStates.waiting_for_value)
+async def admin_edit_prize_value(message: Message, state: FSMContext, session: AsyncSession):
+    """Process prize value edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    try:
+        value = float(message.text)
+    except ValueError:
+        await message.answer("❌ Введите число")
+        return
+    
+    data = await state.get_data()
+    prize_id = data['prize_id']
+    
+    try:
+        success = await RouletteService.update_prize(
+            session=session,
+            prize_id=prize_id,
+            prize_value=value
+        )
+        
+        if success:
+            await state.clear()
+            await message.answer(
+                f"✅ **Значение обновлено!**\n\n"
+                f"Новое значение: `{value}`",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            logger.info(f"Roulette prize {prize_id} value updated to: {value}")
+        else:
+            await message.answer("❌ Ошибка при обновлении значения.")
+            
+    except Exception as e:
+        logger.error(f"Error editing prize value: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании значения.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_roulette_prob_"))
+async def admin_edit_prize_prob_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing prize probability."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    prize_id = int(callback.data.split("_")[4])
+    prize = await RouletteService.get_prize_by_id(session, prize_id)
+    
+    if not prize:
+        await callback.answer("❌ Приз не найден", show_alert=True)
+        return
+    
+    await state.update_data(prize_id=prize_id)
+    await state.set_state(EditRoulettePrizeStates.waiting_for_probability)
+    
+    await callback.message.edit_text(
+        f"🎲 **Редактирование вероятности приза**\n\n"
+        f"Текущая вероятность: `{prize.probability*100:.1f}%`\n\n"
+        f"Введите новую вероятность (от 0.0 до 1.0):\n\n"
+        f"Примеры:\n"
+        f"• 0.15 = 15%\n"
+        f"• 0.07 = 7%",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditRoulettePrizeStates.waiting_for_probability)
+async def admin_edit_prize_prob(message: Message, state: FSMContext, session: AsyncSession):
+    """Process prize probability edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    try:
+        probability = float(message.text)
+        if probability < 0 or probability > 1:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ Введите число от 0.0 до 1.0")
+        return
+    
+    data = await state.get_data()
+    prize_id = data['prize_id']
+    
+    try:
+        success = await RouletteService.update_prize(
+            session=session,
+            prize_id=prize_id,
+            probability=probability
+        )
+        
+        if success:
+            await state.clear()
+            await message.answer(
+                f"✅ **Вероятность обновлена!**\n\n"
+                f"Новая вероятность: `{probability*100:.1f}%`",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            logger.info(f"Roulette prize {prize_id} probability updated to: {probability}")
+        else:
+            await message.answer("❌ Ошибка при обновлении вероятности.")
+            
+    except Exception as e:
+        logger.error(f"Error editing prize probability: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании вероятности.")
 

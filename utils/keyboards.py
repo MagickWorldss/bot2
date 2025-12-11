@@ -32,7 +32,6 @@ def shop_menu_keyboard(user_role: str = 'user') -> InlineKeyboardMarkup:
     builder.button(text="🛍 Каталог товаров", callback_data="catalog_menu")
     builder.button(text="🎁 Стафф (за баллы)", callback_data="staff_menu")
     builder.button(text="📍 Изменить регион", callback_data="change_region_menu")
-    builder.button(text="🏘 Все районы", callback_data="all_districts_menu")
     
     # Add product management for sellers, moderators, admins
     if user_role in ['seller', 'moderator', 'admin']:
@@ -60,7 +59,6 @@ def profile_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     
     builder.button(text="💰 Мой баланс", callback_data="my_balance")
-    builder.button(text="🎁 Реферальная программа", callback_data="referral_menu")
     builder.button(text="🎫 Мои промокоды", callback_data="my_promocodes_menu")
     builder.button(text="🏆 Достижения", callback_data="achievements_menu")
     builder.button(text="📜 История покупок", callback_data="purchase_history_menu")
@@ -131,15 +129,27 @@ def admin_categories_list_keyboard(categories: List) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def admin_category_actions_keyboard(category_id: int) -> InlineKeyboardMarkup:
-    """Admin category actions keyboard."""
+def admin_category_actions_keyboard(category_id: int, is_active: bool) -> InlineKeyboardMarkup:
+    """Admin category actions keyboard - full editing menu."""
     builder = InlineKeyboardBuilder()
     
-    builder.button(text="✏️ Редактировать", callback_data=f"admin_edit_category_{category_id}")
+    # Edit fields separately
+    builder.button(text="✏️ Название", callback_data=f"admin_edit_cat_name_{category_id}")
+    builder.button(text="🎨 Иконка", callback_data=f"admin_edit_cat_icon_{category_id}")
+    builder.button(text="📝 Описание", callback_data=f"admin_edit_cat_desc_{category_id}")
+    builder.button(text="🔑 Ключ", callback_data=f"admin_edit_cat_key_{category_id}")
+    builder.button(text="🔢 Порядок", callback_data=f"admin_edit_cat_order_{category_id}")
+    
+    # Toggle active status
+    if is_active:
+        builder.button(text="🔴 Деактивировать", callback_data=f"admin_toggle_cat_{category_id}")
+    else:
+        builder.button(text="🟢 Активировать", callback_data=f"admin_toggle_cat_{category_id}")
+    
     builder.button(text="🗑 Удалить", callback_data=f"admin_delete_category_{category_id}")
     builder.button(text="🔙 Назад", callback_data="admin_edit_categories")
     
-    builder.adjust(1)
+    builder.adjust(2, 2, 1, 1, 1, 1, 1)
     return builder.as_markup()
 
 

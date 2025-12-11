@@ -7,7 +7,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import User, AdminLog
+from database.models import User, AdminLog, Category
+from sqlalchemy import func
 from services.image_service import ImageService
 from services.location_service import LocationService
 from services.user_service import UserService
@@ -64,6 +65,8 @@ class EditCategoryStates(StatesGroup):
     waiting_for_name = State()
     waiting_for_icon = State()
     waiting_for_description = State()
+    waiting_for_key = State()
+    waiting_for_sort_order = State()
 
 
 class AddCityStates(StatesGroup):
@@ -1370,37 +1373,16 @@ async def admin_block_user(callback: CallbackQuery, session: AsyncSession, user:
         
         # Refresh user info - pass user from current context
         await admin_user_actions(new_callback, user, session)
-        return
-        
-        status = "🚫 Заблокирован"
-        location = "Не указана"
-        if target_user.region and target_user.city:
-            location = f"{target_user.region.name}, {target_user.city.name}"
-        
-        user_info = (
-            f"👤 **Пользователь**\n\n"
-            f"ID: `{target_user.id}`\n"
-            f"Имя: {target_user.first_name or 'N/A'}\n"
-            f"Username: @{target_user.username or 'N/A'}\n"
-            f"Статус: {status}\n\n"
-            f"💰 Баланс: {format_sol_amount(target_user.balance_eur)}\n"
-            f"📍 Локация: {location}\n"
-            f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            f"Выберите действие:"
-        )
-        
-        await callback.message.edit_text(
-            user_info,
-            reply_markup=builder.as_markup(),
-            parse_mode="Markdown"
-        )
     else:
         await callback.answer("❌ Ошибка при блокировке пользователя.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("admin_unblock_"))
-async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, user: User):
+async def admin_unblock_user(callback: CallbackQuery, user: User, session: AsyncSession):
     """Unblock user."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     user_id = int(callback.data.split("_")[2])
     
     success = await UserService.block_user(session, user_id, blocked=False)
@@ -1429,30 +1411,6 @@ async def admin_unblock_user(callback: CallbackQuery, session: AsyncSession, use
         
         # Refresh user info - pass user from current context
         await admin_user_actions(new_callback, user, session)
-        return
-        
-        status = "✅ Активен"
-        location = "Не указана"
-        if target_user.region and target_user.city:
-            location = f"{target_user.region.name}, {target_user.city.name}"
-        
-        user_info = (
-            f"👤 **Пользователь**\n\n"
-            f"ID: `{target_user.id}`\n"
-            f"Имя: {target_user.first_name or 'N/A'}\n"
-            f"Username: @{target_user.username or 'N/A'}\n"
-            f"Статус: {status}\n\n"
-            f"💰 Баланс: {format_sol_amount(target_user.balance_eur)}\n"
-            f"📍 Локация: {location}\n"
-            f"📅 Регистрация: {target_user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            f"Выберите действие:"
-        )
-        
-        await callback.message.edit_text(
-            user_info,
-            reply_markup=builder.as_markup(),
-            parse_mode="Markdown"
-        )
     else:
         await callback.answer("❌ Ошибка при разблокировке пользователя.", show_alert=True)
 
@@ -1494,8 +1452,11 @@ async def admin_view_purchases(callback: CallbackQuery, session: AsyncSession):
 
 
 @router.callback_query(F.data.startswith("admin_transactions_"))
-async def admin_view_transactions(callback: CallbackQuery, session: AsyncSession):
+async def admin_view_transactions(callback: CallbackQuery, user: User, session: AsyncSession):
     """View user's transaction history."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     user_id = int(callback.data.split("_")[2])
     
     transactions = await TransactionService.get_user_transactions(session, user_id, limit=10)
@@ -1539,8 +1500,11 @@ async def admin_view_transactions(callback: CallbackQuery, session: AsyncSession
 
 
 @router.callback_query(F.data.startswith("admin_add_balance_"))
-async def admin_add_balance_init(callback: CallbackQuery, state: FSMContext):
+async def admin_add_balance_init(callback: CallbackQuery, user: User, state: FSMContext):
     """Initialize balance addition."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     user_id = int(callback.data.split("_")[3])
     
     await state.update_data(target_user_id=user_id)
@@ -1690,12 +1654,15 @@ async def admin_reset_balance(callback: CallbackQuery, user: User, session: Asyn
     )
     
     # Refresh user info
-    await admin_user_actions(new_callback, session)
+    await admin_user_actions(new_callback, user, session)
 
 
 @router.callback_query(F.data.startswith("admin_change_role_"))
-async def admin_change_role(callback: CallbackQuery, session: AsyncSession):
+async def admin_change_role(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show role selection menu."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     user_id = int(callback.data.split("_")[3])
     
     from services.role_service import role_service
@@ -1720,8 +1687,11 @@ async def admin_change_role(callback: CallbackQuery, session: AsyncSession):
 
 
 @router.callback_query(F.data.startswith("set_role_"))
-async def set_user_role(callback: CallbackQuery, session: AsyncSession):
+async def set_user_role(callback: CallbackQuery, user: User, session: AsyncSession):
     """Set user role."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     parts = callback.data.split("_")
     user_id = int(parts[2])
     new_role = parts[3]
@@ -1745,8 +1715,7 @@ async def set_user_role(callback: CallbackQuery, session: AsyncSession):
         )
         
         # Return to user info
-        await admin_user_actions(new_callback, session)
-        await callback.answer("✅ Роль изменена!")
+        await admin_user_actions(new_callback, user, session)
     else:
         await callback.answer("❌ Ошибка при изменении роли", show_alert=True)
 
@@ -1944,7 +1913,11 @@ async def admin_edit_categories_list(callback: CallbackQuery, user: User, sessio
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
     
-    categories = await category_service.get_all_categories(session)
+    # Get all categories (including inactive) for editing
+    from sqlalchemy import select
+    stmt = select(Category).order_by(Category.sort_order, Category.name)
+    result = await session.execute(stmt)
+    categories = result.scalars().all()
     
     if not categories:
         await callback.message.edit_text(
@@ -1996,10 +1969,12 @@ async def admin_category_actions(callback: CallbackQuery, user: User, session: A
         f"Ключ: `{category.key}`\n"
         f"Иконка: {category.icon}\n"
         f"Описание: {category.description or 'Нет описания'}\n"
+        f"Порядок сортировки: {category.sort_order}\n"
         f"Статус: {status}\n"
-        f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-        f"Выберите действие:",
-        reply_markup=admin_category_actions_keyboard(category_id),
+        f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n"
+        f"{f'Обновлена: {category.updated_at.strftime(\"%d.%m.%Y %H:%M\")}' if category.updated_at else ''}\n\n"
+        f"**Выберите что редактировать:**",
+        reply_markup=admin_category_actions_keyboard(category_id, category.is_active),
         parse_mode="Markdown"
     )
     await callback.answer()
@@ -2039,9 +2014,9 @@ async def admin_init_categories(callback: CallbackQuery, user: User, session: As
 
 # ==================== CATEGORY EDIT/DELETE HANDLERS ====================
 
-@router.callback_query(F.data.startswith("admin_edit_category_"))
-async def admin_edit_category_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
-    """Start editing category."""
+@router.callback_query(F.data.startswith("admin_edit_cat_name_"))
+async def admin_edit_category_name_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category name."""
     if not is_admin(user.id, settings.admin_list):
         await callback.answer("⛔️ Нет доступа", show_alert=True)
         return
@@ -2057,9 +2032,9 @@ async def admin_edit_category_start(callback: CallbackQuery, user: User, state: 
     await state.set_state(EditCategoryStates.waiting_for_name)
     
     await callback.message.edit_text(
-        f"✏️ **Редактирование категории: {category.name}**\n\n"
+        f"✏️ **Редактирование названия категории**\n\n"
         f"Текущее название: `{category.name}`\n\n"
-        f"Введите новое название (или оставьте текущее):",
+        f"Введите новое название:",
         reply_markup=cancel_inline_keyboard(),
         parse_mode="Markdown"
     )
@@ -2067,7 +2042,7 @@ async def admin_edit_category_start(callback: CallbackQuery, user: User, state: 
 
 
 @router.message(EditCategoryStates.waiting_for_name)
-async def admin_edit_category_name(message: Message, state: FSMContext):
+async def admin_edit_category_name(message: Message, state: FSMContext, session: AsyncSession):
     """Process category name edit."""
     if message.text == "❌ Отмена":
         await state.clear()
@@ -2078,13 +2053,68 @@ async def admin_edit_category_name(message: Message, state: FSMContext):
         return
     
     name = message.text.strip()
-    await state.update_data(name=name)
+    if not name:
+        await message.answer("❌ Название не может быть пустым.")
+        return
+    
+    data = await state.get_data()
+    category_id = data['category_id']
+    
+    try:
+        success = await category_service.update_category(
+            session=session,
+            category_id=category_id,
+            name=name
+        )
+        
+        if success:
+            category = await category_service.get_category_by_id(session, category_id)
+            await state.clear()
+            
+            await message.answer(
+                f"✅ **Название обновлено!**\n\n"
+                f"Новое название: `{category.name}`",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=message.from_user.id,
+                action="edit_category_name",
+                details=f"Updated category #{category_id} name to: {name}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await message.answer("❌ Ошибка при обновлении названия.")
+            
+    except Exception as e:
+        logger.error(f"Error editing category name: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании названия.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_cat_icon_"))
+async def admin_edit_category_icon_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category icon."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    await state.update_data(category_id=category_id)
     await state.set_state(EditCategoryStates.waiting_for_icon)
     
-    await message.answer(
-        f"✏️ Новое название: `{name}`\n\n"
-        f"🎨 **Введите новую иконку:**\n\n"
-        f"Примеры иконок:\n"
+    await callback.message.edit_text(
+        f"🎨 **Редактирование иконки категории**\n\n"
+        f"Текущая иконка: {category.icon}\n\n"
+        f"**Примеры иконок:**\n"
         f"❄️ (снежинка)\n"
         f"💊 (таблетка)\n"
         f"☀️ (солнце)\n"
@@ -2097,14 +2127,15 @@ async def admin_edit_category_name(message: Message, state: FSMContext):
         f"⚽ (мяч)\n"
         f"🐕 (собака)\n"
         f"✈️ (самолет)\n\n"
-        f"Или оставьте текущую иконку, введя ту же:",
-        reply_markup=cancel_keyboard(),
+        f"Введите новую иконку:",
+        reply_markup=cancel_inline_keyboard(),
         parse_mode="Markdown"
     )
+    await callback.answer()
 
 
 @router.message(EditCategoryStates.waiting_for_icon)
-async def admin_edit_category_icon(message: Message, state: FSMContext):
+async def admin_edit_category_icon(message: Message, state: FSMContext, session: AsyncSession):
     """Process category icon edit."""
     if message.text == "❌ Отмена":
         await state.clear()
@@ -2115,21 +2146,77 @@ async def admin_edit_category_icon(message: Message, state: FSMContext):
         return
     
     icon = message.text.strip()
-    await state.update_data(icon=icon)
+    if not icon:
+        await message.answer("❌ Иконка не может быть пустой.")
+        return
+    
+    data = await state.get_data()
+    category_id = data['category_id']
+    
+    try:
+        success = await category_service.update_category(
+            session=session,
+            category_id=category_id,
+            icon=icon
+        )
+        
+        if success:
+            category = await category_service.get_category_by_id(session, category_id)
+            await state.clear()
+            
+            await message.answer(
+                f"✅ **Иконка обновлена!**\n\n"
+                f"Новая иконка: {category.icon}",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=message.from_user.id,
+                action="edit_category_icon",
+                details=f"Updated category #{category_id} icon to: {icon}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await message.answer("❌ Ошибка при обновлении иконки.")
+            
+    except Exception as e:
+        logger.error(f"Error editing category icon: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании иконки.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_cat_desc_"))
+async def admin_edit_category_description_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category description."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    await state.update_data(category_id=category_id)
     await state.set_state(EditCategoryStates.waiting_for_description)
     
-    await message.answer(
-        f"✏️ Новая иконка: {icon}\n\n"
-        f"📝 **Введите новое описание:**\n\n"
-        f"Опишите категорию товаров (например: \"Зимние пейзажи, снег, мороз\"):",
-        reply_markup=cancel_keyboard(),
+    await callback.message.edit_text(
+        f"📝 **Редактирование описания категории**\n\n"
+        f"Текущее описание: {category.description or 'Нет описания'}\n\n"
+        f"Введите новое описание (или отправьте '-' чтобы удалить):",
+        reply_markup=cancel_inline_keyboard(),
         parse_mode="Markdown"
     )
+    await callback.answer()
 
 
 @router.message(EditCategoryStates.waiting_for_description)
 async def admin_edit_category_description(message: Message, state: FSMContext, session: AsyncSession):
-    """Process category description edit and save changes."""
+    """Process category description edit."""
     if message.text == "❌ Отмена":
         await state.clear()
         await message.answer(
@@ -2138,30 +2225,24 @@ async def admin_edit_category_description(message: Message, state: FSMContext, s
         )
         return
     
-    description = message.text.strip()
+    description = None if message.text.strip() == '-' else message.text.strip()
     data = await state.get_data()
+    category_id = data['category_id']
     
     try:
-        # Update category
         success = await category_service.update_category(
             session=session,
-            category_id=data['category_id'],
-            name=data['name'],
-            icon=data['icon'],
+            category_id=category_id,
             description=description
         )
         
         if success:
-            # Get updated category
-            updated_category = await category_service.get_category_by_id(session, data['category_id'])
+            category = await category_service.get_category_by_id(session, category_id)
             await state.clear()
             
             await message.answer(
-                f"✅ **Категория успешно обновлена!**\n\n"
-                f"ID: #{updated_category.id}\n"
-                f"Название: {updated_category.name}\n"
-                f"Иконка: {updated_category.icon}\n"
-                f"Описание: {updated_category.description}",
+                f"✅ **Описание обновлено!**\n\n"
+                f"Новое описание: {category.description or 'Нет описания'}",
                 reply_markup=admin_menu_keyboard(),
                 parse_mode="Markdown"
             )
@@ -2169,23 +2250,249 @@ async def admin_edit_category_description(message: Message, state: FSMContext, s
             # Log admin action
             log = AdminLog(
                 admin_id=message.from_user.id,
-                action="edit_category",
-                details=f"Edited category {updated_category.key}: {updated_category.name}"
+                action="edit_category_description",
+                details=f"Updated category #{category_id} description"
             )
             session.add(log)
             await session.commit()
         else:
-            await message.answer(
-                "❌ Ошибка при обновлении категории.",
-                reply_markup=admin_menu_keyboard()
-            )
+            await message.answer("❌ Ошибка при обновлении описания.")
             
     except Exception as e:
-        logger.error(f"Error editing category: {e}", exc_info=True)
+        logger.error(f"Error editing category description: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании описания.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_cat_key_"))
+async def admin_edit_category_key_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category key."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    await state.update_data(category_id=category_id)
+    await state.set_state(EditCategoryStates.waiting_for_key)
+    
+    await callback.message.edit_text(
+        f"🔑 **Редактирование ключа категории**\n\n"
+        f"⚠️ **ВНИМАНИЕ:** Изменение ключа может повлиять на товары, использующие эту категорию!\n\n"
+        f"Текущий ключ: `{category.key}`\n\n"
+        f"Введите новый ключ (только латинские буквы, цифры и подчеркивания):",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditCategoryStates.waiting_for_key)
+async def admin_edit_category_key(message: Message, state: FSMContext, session: AsyncSession):
+    """Process category key edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
         await message.answer(
-            "❌ Ошибка при редактировании категории.",
+            "❌ Редактирование отменено.",
             reply_markup=admin_menu_keyboard()
         )
+        return
+    
+    new_key = message.text.strip().lower()
+    
+    # Validate key
+    if not new_key.replace('_', '').isalnum():
+        await message.answer("❌ Ключ должен содержать только латинские буквы, цифры и подчеркивания.")
+        return
+    
+    data = await state.get_data()
+    category_id = data['category_id']
+    
+    try:
+        # Check if key already exists
+        existing = await category_service.get_category_by_key(session, new_key)
+        if existing and existing.id != category_id:
+            await message.answer(f"❌ Категория с ключом `{new_key}` уже существует.")
+            return
+        
+        # Update key using service
+        success = await category_service.update_category(
+            session=session,
+            category_id=category_id,
+            key=new_key
+        )
+        
+        if success:
+            category = await category_service.get_category_by_id(session, category_id)
+            await state.clear()
+            
+            await message.answer(
+                f"✅ **Ключ обновлен!**\n\n"
+                f"Новый ключ: `{category.key}`\n\n"
+                f"⚠️ Проверьте товары, использующие эту категорию!",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=message.from_user.id,
+                action="edit_category_key",
+                details=f"Updated category #{category_id} key to: {new_key}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await message.answer("❌ Ошибка при обновлении ключа.")
+        
+    except Exception as e:
+        logger.error(f"Error editing category key: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании ключа.")
+
+
+@router.callback_query(F.data.startswith("admin_edit_cat_order_"))
+async def admin_edit_category_order_start(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing category sort order."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[3])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    await state.update_data(category_id=category_id)
+    await state.set_state(EditCategoryStates.waiting_for_sort_order)
+    
+    await callback.message.edit_text(
+        f"🔢 **Редактирование порядка сортировки**\n\n"
+        f"Текущий порядок: `{category.sort_order}`\n\n"
+        f"Категории сортируются по возрастанию (меньше = выше в списке).\n\n"
+        f"Введите новый порядок (число):",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditCategoryStates.waiting_for_sort_order)
+async def admin_edit_category_order(message: Message, state: FSMContext, session: AsyncSession):
+    """Process category sort order edit."""
+    if message.text == "❌ Отмена":
+        await state.clear()
+        await message.answer(
+            "❌ Редактирование отменено.",
+            reply_markup=admin_menu_keyboard()
+        )
+        return
+    
+    try:
+        sort_order = int(message.text.strip())
+    except ValueError:
+        await message.answer("❌ Введите число.")
+        return
+    
+    data = await state.get_data()
+    category_id = data['category_id']
+    
+    try:
+        success = await category_service.update_category(
+            session=session,
+            category_id=category_id,
+            sort_order=sort_order
+        )
+        
+        if success:
+            category = await category_service.get_category_by_id(session, category_id)
+            await state.clear()
+            
+            await message.answer(
+                f"✅ **Порядок сортировки обновлен!**\n\n"
+                f"Новый порядок: `{category.sort_order}`",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=message.from_user.id,
+                action="edit_category_order",
+                details=f"Updated category #{category_id} sort_order to: {sort_order}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await message.answer("❌ Ошибка при обновлении порядка сортировки.")
+            
+    except Exception as e:
+        logger.error(f"Error editing category order: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при редактировании порядка сортировки.")
+
+
+@router.callback_query(F.data.startswith("admin_toggle_cat_"))
+async def admin_toggle_category(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Toggle category active status."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ Нет доступа", show_alert=True)
+        return
+    
+    category_id = int(callback.data.split("_")[2])
+    category = await category_service.get_category_by_id(session, category_id)
+    
+    if not category:
+        await callback.answer("❌ Категория не найдена.", show_alert=True)
+        return
+    
+    try:
+        new_status = not category.is_active
+        success = await category_service.update_category(
+            session=session,
+            category_id=category_id,
+            is_active=new_status
+        )
+        
+        if success:
+            category = await category_service.get_category_by_id(session, category_id)
+            status_text = "активирована" if new_status else "деактивирована"
+            
+            await callback.message.edit_text(
+                f"✅ **Категория {status_text}!**\n\n"
+                f"📂 **Категория: {category.name}**\n\n"
+                f"ID: #{category.id}\n"
+                f"Ключ: `{category.key}`\n"
+                f"Иконка: {category.icon}\n"
+                f"Описание: {category.description or 'Нет описания'}\n"
+                f"Порядок сортировки: {category.sort_order}\n"
+                f"Статус: {'✅ Активна' if category.is_active else '❌ Неактивна'}\n"
+                f"Создана: {category.created_at.strftime('%d.%m.%Y %H:%M')}\n"
+                f"{f'Обновлена: {category.updated_at.strftime(\"%d.%m.%Y %H:%M\")}' if category.updated_at else ''}\n\n"
+                f"**Выберите что редактировать:**",
+                reply_markup=admin_category_actions_keyboard(category_id, category.is_active),
+                parse_mode="Markdown"
+            )
+            await callback.answer(f"✅ Категория {status_text}!")
+            
+            # Log admin action
+            log = AdminLog(
+                admin_id=user.id,
+                action="toggle_category",
+                details=f"{'Activated' if new_status else 'Deactivated'} category #{category_id}: {category.name}"
+            )
+            session.add(log)
+            await session.commit()
+        else:
+            await callback.answer("❌ Ошибка при изменении статуса.", show_alert=True)
+            
+    except Exception as e:
+        logger.error(f"Error toggling category: {e}", exc_info=True)
+        await callback.answer("❌ Ошибка при изменении статуса.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("admin_delete_category_"))
@@ -2212,7 +2519,7 @@ async def admin_delete_category(callback: CallbackQuery, user: User, session: As
                 f"❌ **Нельзя удалить категорию!**\n\n"
                 f"Категория `{category.name}` используется в {len(products_with_category)} товарах.\n\n"
                 f"Сначала удалите или измените категорию у всех товаров.",
-                reply_markup=admin_category_actions_keyboard(category_id),
+                reply_markup=admin_category_actions_keyboard(category_id, category.is_active),
                 parse_mode="Markdown"
             )
             await callback.answer("❌ Категория используется в товарах!")
@@ -2244,4 +2551,3 @@ async def admin_delete_category(callback: CallbackQuery, user: User, session: As
     except Exception as e:
         logger.error(f"Error deleting category: {e}", exc_info=True)
         await callback.answer("❌ Ошибка при удалении категории.", show_alert=True)
-

@@ -57,6 +57,7 @@ async def roulette_spin(callback: CallbackQuery, user: User, session: AsyncSessi
         'eur': '💶',
         'points': '⭐',
         'promocode': '🎟',
+        'discount_coupon': '🎫',
         'nothing': '😔'
     }
     
@@ -64,6 +65,8 @@ async def roulette_spin(callback: CallbackQuery, user: User, session: AsyncSessi
         'eur': f"💶 **{prize_value} EUR** добавлено на ваш баланс!",
         'points': f"⭐ **{int(prize_value)} баллов** добавлено!",
         'promocode': f"🎟 **Промокод**: {prize_value}",
+        'discount_coupon': f"🎫 **Купон на покупку до {prize_value} EUR** добавлен!\n\n"
+                          f"Купон действителен 10 дней. Используйте его при следующей покупке!",
         'nothing': "😔 К сожалению, в этот раз ничего не выпало. Попробуйте завтра!"
     }
     

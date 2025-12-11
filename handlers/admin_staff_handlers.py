@@ -10,6 +10,8 @@ from database.models import User
 from services.staff_service import staff_service
 from services.role_service import role_service
 from utils.keyboards import cancel_keyboard, admin_menu_keyboard
+from utils.helpers import is_admin
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +31,7 @@ class AddStaffItemStates(StatesGroup):
 @router.message(F.text == "🎁 Стафф товары")
 async def staff_items_menu(message: Message, user: User, session: AsyncSession):
     """Show staff items management menu."""
-    # Check permission
-    has_perm = await role_service.check_user_permission(session, user.id, 'all')
-    if not has_perm:
+    if not is_admin(user.id, settings.admin_list):
         await message.answer("⛔️ Нет доступа")
         return
     
@@ -63,8 +63,11 @@ async def staff_items_menu(message: Message, user: User, session: AsyncSession):
 
 
 @router.callback_query(F.data == "create_staff_item")
-async def create_staff_item_init(callback: CallbackQuery, state: FSMContext):
+async def create_staff_item_init(callback: CallbackQuery, user: User, state: FSMContext):
     """Start staff item creation."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     text = """
 ➕ **Добавление товара за баллы**
 
@@ -142,8 +145,11 @@ async def staff_receive_price(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("staff_type_"))
-async def staff_receive_type(callback: CallbackQuery, state: FSMContext):
+async def staff_receive_type(callback: CallbackQuery, user: User, state: FSMContext):
     """Receive item type."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     item_type = callback.data.split("_")[2]  # digital, promocode, bonus
     
     await state.update_data(item_type=item_type)
@@ -235,8 +241,11 @@ async def staff_receive_stock(message: Message, session: AsyncSession, user: Use
 
 
 @router.callback_query(F.data == "list_all_staff_items")
-async def list_all_staff_items(callback: CallbackQuery, session: AsyncSession):
+async def list_all_staff_items(callback: CallbackQuery, user: User, session: AsyncSession):
     """List all staff items."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     items = await staff_service.get_all_items(session, active_only=False)
     
     text = "📋 **Все товары за баллы:**\n\n"
@@ -261,27 +270,37 @@ async def list_all_staff_items(callback: CallbackQuery, session: AsyncSession):
 
 
 @router.callback_query(F.data.startswith("deactivate_staff_"))
-async def deactivate_staff_item(callback: CallbackQuery, session: AsyncSession):
+async def deactivate_staff_item(callback: CallbackQuery, user: User, session: AsyncSession):
     """Deactivate staff item."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     item_id = int(callback.data.split("_")[2])
     
     await staff_service.toggle_item_active(session, item_id, False)
     await callback.answer("✅ Товар деактивирован")
-    await list_all_staff_items(callback, session)
+    await list_all_staff_items(callback, user, session)
 
 
 @router.callback_query(F.data.startswith("activate_staff_"))
-async def activate_staff_item(callback: CallbackQuery, session: AsyncSession):
+async def activate_staff_item(callback: CallbackQuery, user: User, session: AsyncSession):
     """Activate staff item."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     item_id = int(callback.data.split("_")[2])
     
     await staff_service.toggle_item_active(session, item_id, True)
     await callback.answer("✅ Товар активирован")
-    await list_all_staff_items(callback, session)
+    await list_all_staff_items(callback, user, session)
 
 
 @router.callback_query(F.data == "back_to_staff_menu")
 async def back_to_staff_menu(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Return to staff menu."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     """Return to staff menu."""
     await staff_items_menu(callback.message, user, session)
     await callback.message.delete()

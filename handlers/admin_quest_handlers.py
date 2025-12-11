@@ -385,7 +385,7 @@ async def admin_add_quest_reward_value(message: Message, state: FSMContext):
 
 @router.message(AddQuestStates.waiting_for_duration)
 async def admin_add_quest_duration(message: Message, state: FSMContext, session: AsyncSession):
-    """Process duration and create quest."""
+    """Process duration and create or update quest."""
     try:
         days = int(message.text)
         if days <= 0:
@@ -397,7 +397,25 @@ async def admin_add_quest_duration(message: Message, state: FSMContext, session:
     # Get all data
     data = await state.get_data()
     
-    # Create quest
+    # Check if editing dates
+    if data.get('edit_type') == 'dates':
+        quest_id = data.get('quest_id')
+        quest = await QuestService.get_quest_by_id(session, quest_id)
+        
+        if quest:
+            starts_at = quest.starts_at
+            ends_at = starts_at + timedelta(days=days)
+            await QuestService.update_quest(session, quest_id, ends_at=ends_at)
+            await state.clear()
+            await message.answer(
+                f"✅ **Даты квеста обновлены!**\n\n"
+                f"Новый период: {days} дней",
+                reply_markup=admin_menu_keyboard(),
+                parse_mode="Markdown"
+            )
+        return
+    
+    # Create new quest
     starts_at = datetime.now(timezone.utc)
     ends_at = starts_at + timedelta(days=days)
     
@@ -430,30 +448,42 @@ async def admin_add_quest_duration(message: Message, state: FSMContext, session:
 
 
 @router.callback_query(F.data.startswith("admin_activate_quest_"))
-async def admin_activate_quest(callback: CallbackQuery, session: AsyncSession):
+async def admin_activate_quest(callback: CallbackQuery, user: User, session: AsyncSession):
     """Activate quest."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     quest_id = int(callback.data.split("_")[3])
     await QuestService.toggle_quest_status(session, quest_id)
     
     # Refresh display
-    await admin_quest_actions(callback, callback.from_user, session)
+    await admin_quest_actions(callback, user, session)
     await callback.answer("✅ Квест активирован")
 
 
 @router.callback_query(F.data.startswith("admin_deactivate_quest_"))
-async def admin_deactivate_quest(callback: CallbackQuery, session: AsyncSession):
+async def admin_deactivate_quest(callback: CallbackQuery, user: User, session: AsyncSession):
     """Deactivate quest."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     quest_id = int(callback.data.split("_")[3])
     await QuestService.toggle_quest_status(session, quest_id)
     
     # Refresh display
-    await admin_quest_actions(callback, callback.from_user, session)
+    await admin_quest_actions(callback, user, session)
     await callback.answer("🔴 Квест деактивирован")
 
 
 @router.callback_query(F.data.startswith("admin_delete_quest_"))
-async def admin_delete_quest(callback: CallbackQuery, session: AsyncSession):
+async def admin_delete_quest(callback: CallbackQuery, user: User, session: AsyncSession):
     """Delete quest."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
     quest_id = int(callback.data.split("_")[3])
     success = await QuestService.delete_quest(session, quest_id)
     
@@ -480,3 +510,269 @@ async def cancel_add_quest(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer("❌ Отменено")
 
+
+# Edit quest handlers
+@router.callback_query(F.data.startswith("admin_edit_quest_name_"))
+async def admin_edit_quest_name(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing quest name."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    quest_id = int(callback.data.split("_")[4])
+    quest = await QuestService.get_quest_by_id(session, quest_id)
+    
+    if not quest:
+        await callback.answer("❌ Квест не найден", show_alert=True)
+        return
+    
+    await state.set_state(EditQuestStates.waiting_for_name)
+    await state.update_data(quest_id=quest_id, edit_type='name')
+    
+    await callback.message.edit_text(
+        f"✏️ **Редактирование названия квеста**\n\n"
+        f"Текущее название (RU): {quest.name_ru}\n"
+        f"Текущее название (EN): {quest.name_en}\n\n"
+        f"Введите новое название на русском:",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditQuestStates.waiting_for_name)
+async def admin_save_quest_name(message: Message, state: FSMContext, session: AsyncSession):
+    """Save quest name."""
+    data = await state.get_data()
+    quest_id = data.get('quest_id')
+    edit_type = data.get('edit_type')
+    
+    if edit_type == 'name':
+        # First name (RU), then ask for EN
+        if 'name_ru' not in data:
+            await state.update_data(name_ru=message.text)
+            await message.answer(
+                "Теперь введите название на английском:",
+                reply_markup=cancel_inline_keyboard()
+            )
+        else:
+            # Save both names
+            name_ru = data['name_ru']
+            name_en = message.text
+            
+            await QuestService.update_quest(session, quest_id, name_ru=name_ru, name_en=name_en)
+            await state.clear()
+            
+            await message.answer(
+                "✅ Название квеста обновлено!",
+                reply_markup=admin_menu_keyboard()
+            )
+
+
+@router.callback_query(F.data.startswith("admin_edit_quest_desc_"))
+async def admin_edit_quest_desc(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing quest description."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    quest_id = int(callback.data.split("_")[4])
+    quest = await QuestService.get_quest_by_id(session, quest_id)
+    
+    if not quest:
+        await callback.answer("❌ Квест не найден", show_alert=True)
+        return
+    
+    await state.set_state(EditQuestStates.waiting_for_description)
+    await state.update_data(quest_id=quest_id, edit_type='description')
+    
+    await callback.message.edit_text(
+        f"📝 **Редактирование описания квеста**\n\n"
+        f"Текущее описание (RU): {quest.description_ru[:100]}...\n\n"
+        f"Введите новое описание на русском:",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditQuestStates.waiting_for_description)
+async def admin_save_quest_desc(message: Message, state: FSMContext, session: AsyncSession):
+    """Save quest description."""
+    data = await state.get_data()
+    quest_id = data.get('quest_id')
+    edit_type = data.get('edit_type')
+    
+    if edit_type == 'description':
+        if 'description_ru' not in data:
+            await state.update_data(description_ru=message.text)
+            await message.answer(
+                "Теперь введите описание на английском:",
+                reply_markup=cancel_inline_keyboard()
+            )
+        else:
+            description_ru = data['description_ru']
+            description_en = message.text
+            
+            await QuestService.update_quest(session, quest_id, description_ru=description_ru, description_en=description_en)
+            await state.clear()
+            
+            await message.answer(
+                "✅ Описание квеста обновлено!",
+                reply_markup=admin_menu_keyboard()
+            )
+
+
+@router.callback_query(F.data.startswith("admin_edit_quest_cond_"))
+async def admin_edit_quest_cond(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing quest condition."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    quest_id = int(callback.data.split("_")[4])
+    quest = await QuestService.get_quest_by_id(session, quest_id)
+    
+    if not quest:
+        await callback.answer("❌ Квест не найден", show_alert=True)
+        return
+    
+    await state.set_state(EditQuestStates.waiting_for_condition)
+    await state.update_data(quest_id=quest_id)
+    
+    await callback.message.edit_text(
+        f"🎯 **Редактирование условия квеста**\n\n"
+        f"Текущее условие: {quest.condition_type} - {quest.condition_value}\n\n"
+        f"Введите тип условия (purchases/spending/items):",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditQuestStates.waiting_for_condition)
+async def admin_save_quest_cond(message: Message, state: FSMContext, session: AsyncSession):
+    """Save quest condition."""
+    data = await state.get_data()
+    quest_id = data.get('quest_id')
+    
+    condition_type = message.text.lower()
+    if condition_type not in ['purchases', 'spending', 'items']:
+        await message.answer("❌ Неверный тип. Введите: purchases, spending или items")
+        return
+    
+    if 'condition_type' not in data:
+        await state.update_data(condition_type=condition_type)
+        await message.answer(
+            "Введите значение условия (число):",
+            reply_markup=cancel_inline_keyboard()
+        )
+    else:
+        try:
+            condition_value = int(message.text)
+            if condition_value <= 0:
+                raise ValueError
+        except ValueError:
+            await message.answer("❌ Введите положительное целое число")
+            return
+        
+        condition_type = data['condition_type']
+        await QuestService.update_quest(session, quest_id, condition_type=condition_type, condition_value=condition_value)
+        await state.clear()
+        
+        await message.answer(
+            "✅ Условие квеста обновлено!",
+            reply_markup=admin_menu_keyboard()
+        )
+
+
+@router.callback_query(F.data.startswith("admin_edit_quest_reward_"))
+async def admin_edit_quest_reward(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing quest reward."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    quest_id = int(callback.data.split("_")[4])
+    quest = await QuestService.get_quest_by_id(session, quest_id)
+    
+    if not quest:
+        await callback.answer("❌ Квест не найден", show_alert=True)
+        return
+    
+    await state.set_state(EditQuestStates.waiting_for_reward)
+    await state.update_data(quest_id=quest_id)
+    
+    await callback.message.edit_text(
+        f"🎁 **Редактирование награды квеста**\n\n"
+        f"Текущая награда: {quest.reward_type} - {quest.reward_value}\n\n"
+        f"Введите тип награды (sol/points/promocode):",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+
+@router.message(EditQuestStates.waiting_for_reward)
+async def admin_save_quest_reward(message: Message, state: FSMContext, session: AsyncSession):
+    """Save quest reward."""
+    data = await state.get_data()
+    quest_id = data.get('quest_id')
+    
+    reward_type = message.text.lower()
+    if reward_type not in ['sol', 'points', 'promocode']:
+        await message.answer("❌ Неверный тип. Введите: sol, points или promocode")
+        return
+    
+    if 'reward_type' not in data:
+        await state.update_data(reward_type=reward_type)
+        await message.answer(
+            "Введите значение награды (число):",
+            reply_markup=cancel_inline_keyboard()
+        )
+    else:
+        try:
+            reward_value = float(message.text)
+            if reward_value <= 0:
+                raise ValueError
+        except ValueError:
+            await message.answer("❌ Введите положительное число")
+            return
+        
+        reward_type = data['reward_type']
+        await QuestService.update_quest(session, quest_id, reward_type=reward_type, reward_value=reward_value)
+        await state.clear()
+        
+        await message.answer(
+            "✅ Награда квеста обновлена!",
+            reply_markup=admin_menu_keyboard()
+        )
+
+
+@router.callback_query(F.data.startswith("admin_edit_quest_dates_"))
+async def admin_edit_quest_dates(callback: CallbackQuery, user: User, state: FSMContext, session: AsyncSession):
+    """Start editing quest dates."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("❌ Доступ запрещен", show_alert=True)
+        return
+    
+    quest_id = int(callback.data.split("_")[4])
+    quest = await QuestService.get_quest_by_id(session, quest_id)
+    
+    if not quest:
+        await callback.answer("❌ Квест не найден", show_alert=True)
+        return
+    
+    await state.set_state(AddQuestStates.waiting_for_duration)
+    await state.update_data(quest_id=quest_id, edit_type='dates')
+    
+    await callback.message.edit_text(
+        f"📅 **Редактирование дат квеста**\n\n"
+        f"Текущий период:\n"
+        f"С: {quest.starts_at.strftime('%d.%m.%Y %H:%M')}\n"
+        f"До: {quest.ends_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Введите новую длительность в днях:",
+        reply_markup=cancel_inline_keyboard(),
+        parse_mode="Markdown"
+    )
+    await callback.answer()

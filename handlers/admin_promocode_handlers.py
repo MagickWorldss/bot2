@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import User
 from services.promocode_service import promocode_service
 from services.role_service import role_service
+from utils.helpers import is_admin
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +30,7 @@ class PromocodeStates(StatesGroup):
 @router.message(F.text == "🎫 Промокоды")
 async def promocodes_menu(message: Message, user: User, session: AsyncSession):
     """Show promocodes management menu."""
-    # Check permission
-    has_perm = await role_service.check_user_permission(session, user.id, 'all')
-    if not has_perm:
+    if not is_admin(user.id, settings.admin_list):
         await message.answer("⛔️ Нет доступа")
         return
     
@@ -64,8 +64,11 @@ async def promocodes_menu(message: Message, user: User, session: AsyncSession):
 
 
 @router.callback_query(F.data == "create_promocode")
-async def create_promocode_init(callback: CallbackQuery, state: FSMContext):
+async def create_promocode_init(callback: CallbackQuery, user: User, state: FSMContext):
     """Start promocode creation."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     text = """
 ➕ **Создание промокода**
 
@@ -111,8 +114,11 @@ async def promocode_receive_code(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data.startswith("promo_type_"))
-async def promocode_receive_type(callback: CallbackQuery, state: FSMContext):
+async def promocode_receive_type(callback: CallbackQuery, user: User, state: FSMContext):
     """Receive discount type."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     discount_type = callback.data.split("_")[2]  # percent, fixed, free
     
     await state.update_data(discount_type=discount_type)
@@ -200,6 +206,9 @@ async def promocode_receive_max_uses(message: Message, state: FSMContext, user: 
 @router.callback_query(F.data == "list_all_promocodes")
 async def list_all_promocodes(callback: CallbackQuery, user: User, session: AsyncSession):
     """List all promocodes with management options."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     promocodes = await promocode_service.get_all_promocodes(session)
     
     text = "📋 **Все промокоды:**\n\n"
@@ -221,7 +230,11 @@ async def list_all_promocodes(callback: CallbackQuery, user: User, session: Asyn
 
 
 @router.callback_query(F.data.startswith("deactivate_promo_"))
-async def deactivate_promocode(callback: CallbackQuery, session: AsyncSession):
+async def deactivate_promocode(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Deactivate promocode."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     """Deactivate promocode."""
     promo_id = int(callback.data.split("_")[2])
     
@@ -233,6 +246,10 @@ async def deactivate_promocode(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data == "back_to_promocodes")
 async def back_to_promocodes(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Return to promocodes menu."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     """Return to promocodes menu."""
     await promocodes_menu(callback.message, user, session)
     await callback.message.delete()

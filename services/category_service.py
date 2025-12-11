@@ -56,6 +56,7 @@ class CategoryService:
     async def update_category(
         session: AsyncSession,
         category_id: int,
+        key: Optional[str] = None,
         name: Optional[str] = None,
         icon: Optional[str] = None,
         description: Optional[str] = None,
@@ -64,6 +65,8 @@ class CategoryService:
     ) -> bool:
         """Update category."""
         update_data = {}
+        if key is not None:
+            update_data['key'] = key
         if name is not None:
             update_data['name'] = name
         if icon is not None:

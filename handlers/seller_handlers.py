@@ -18,13 +18,17 @@ router = Router(name='seller_handlers')
 @router.callback_query(F.data == "my_products_menu")
 async def my_products(callback: CallbackQuery, user: User, session: AsyncSession):
     """Show seller's products."""
-    # Check if user is seller, moderator or admin
-    if user.role not in ['seller', 'moderator', 'admin']:
+    from utils.helpers import is_admin
+    from config import settings
+    
+    # Check if user is seller, moderator or admin (by role or ADMIN_IDS)
+    is_admin_user = is_admin(user.id, settings.admin_list)
+    if user.role not in ['seller', 'moderator', 'admin'] and not is_admin_user:
         await callback.answer("⛔️ У вас нет доступа к этой функции.", show_alert=True)
         return
     
     # Get products added by this user
-    if user.role == 'admin' or user.role == 'moderator':
+    if user.role == 'admin' or user.role == 'moderator' or is_admin_user:
         # Admins and moderators can see all products
         images = await ImageService.get_all_images(session, limit=50)
         title = "📦 **Все товары в системе:**"

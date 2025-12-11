@@ -468,6 +468,19 @@ class UserRouletteSpin(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class UserCoupon(Base):
+    """User discount coupons from roulette."""
+    __tablename__ = 'user_coupons'
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.id'))
+    max_discount: Mapped[float] = mapped_column(Float)  # Максимальная скидка в EUR (30.00)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)  # Срок действия (created_at + 10 дней)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class RealQuestTask(Base):
     """Real-life quest tasks (20 tasks leading to a physical prize)."""
     __tablename__ = 'real_quest_tasks'

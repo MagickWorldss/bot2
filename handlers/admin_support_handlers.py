@@ -10,6 +10,8 @@ from database.models import User
 from services.ticket_service import ticket_service
 from services.role_service import role_service
 from utils.keyboards import admin_menu_keyboard
+from utils.helpers import is_admin
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,7 @@ class AdminReplyStates(StatesGroup):
 @router.message(F.text.in_(["🎫 Тикеты поддержки", "🎫 Поддержка"]))
 async def admin_tickets_menu(message: Message, user: User, session: AsyncSession):
     """Show tickets management for admin."""
-    # Check permission
-    has_perm = await role_service.check_user_permission(session, user.id, 'all')
-    if not has_perm:
+    if not is_admin(user.id, settings.admin_list):
         await message.answer("⛔️ Нет доступа")
         return
     
@@ -67,8 +67,11 @@ async def admin_tickets_menu(message: Message, user: User, session: AsyncSession
 
 
 @router.callback_query(F.data.startswith("admin_ticket_"))
-async def admin_view_ticket(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
+async def admin_view_ticket(callback: CallbackQuery, user: User, session: AsyncSession, state: FSMContext):
     """View ticket for admin."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     ticket_id = int(callback.data.split("_")[2])
     
     # Get messages
@@ -109,8 +112,11 @@ async def admin_view_ticket(callback: CallbackQuery, session: AsyncSession, stat
 
 
 @router.callback_query(F.data.startswith("admin_reply_ticket_"))
-async def admin_reply_init(callback: CallbackQuery, state: FSMContext):
+async def admin_reply_init(callback: CallbackQuery, user: User, state: FSMContext):
     """Start admin reply."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     ticket_id = int(callback.data.split("_")[3])
     
     await state.update_data(ticket_id=ticket_id)
@@ -145,8 +151,11 @@ async def admin_reply_send(message: Message, user: User, session: AsyncSession, 
 
 
 @router.callback_query(F.data.startswith("admin_close_ticket_"))
-async def admin_close_ticket(callback: CallbackQuery, session: AsyncSession):
+async def admin_close_ticket(callback: CallbackQuery, user: User, session: AsyncSession):
     """Close ticket."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     ticket_id = int(callback.data.split("_")[3])
     
     await ticket_service.close_ticket(session, ticket_id)
@@ -158,6 +167,10 @@ async def admin_close_ticket(callback: CallbackQuery, session: AsyncSession):
 
 @router.callback_query(F.data == "back_to_tickets")
 async def back_to_tickets(callback: CallbackQuery, user: User, session: AsyncSession):
+    """Return to tickets list."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
     """Return to tickets list."""
     await admin_tickets_menu(callback.message, user, session)
     await callback.message.delete()
