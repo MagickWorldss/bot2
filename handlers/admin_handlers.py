@@ -1335,11 +1335,22 @@ async def admin_user_actions(callback: CallbackQuery, user: User, session: Async
         f"Выберите действие:"
     )
     
-    await callback.message.edit_text(
-        user_info,
-        reply_markup=builder.as_markup(),
-        parse_mode="Markdown"
-    )
+    try:
+        await callback.message.edit_text(
+            user_info,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        # If edit fails (e.g., message too old), send new message
+        logger.error(f"Error editing message: {e}")
+        await callback.message.answer(
+            user_info,
+            reply_markup=builder.as_markup(),
+            parse_mode="Markdown"
+        )
+    
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("admin_block_"))
@@ -1416,8 +1427,12 @@ async def admin_unblock_user(callback: CallbackQuery, user: User, session: Async
 
 
 @router.callback_query(F.data.startswith("admin_purchases_"))
-async def admin_view_purchases(callback: CallbackQuery, session: AsyncSession):
+async def admin_view_purchases(callback: CallbackQuery, user: User, session: AsyncSession):
     """View user's purchase history."""
+    if not is_admin(user.id, settings.admin_list):
+        await callback.answer("⛔️ У вас нет доступа.", show_alert=True)
+        return
+    
     user_id = int(callback.data.split("_")[2])
     
     from services.image_service import ImageService
